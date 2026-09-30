@@ -60,6 +60,71 @@ type Comment = {
   text: string;
 };
 
+type Wallpaper =
+  | "default"
+  | "ocean"
+  | "forest"
+  | "sunset"
+  | "midnight";
+
+type AccentColor =
+  | "blue"
+  | "purple"
+  | "green"
+  | "orange"
+  | "pink";
+
+type TabColor =
+  | "slate"
+  | "blue"
+  | "green"
+  | "amber"
+  | "rose";
+
+type UserPreferences = {
+  wallpaper: Wallpaper;
+  accent_color: AccentColor;
+  tab_color: TabColor;
+};
+
+const WALLPAPER_STYLES: Record<
+  Wallpaper,
+  string
+> = {
+  default:
+    "linear-gradient(135deg, #f8fafc, #e2e8f0)",
+  ocean:
+    "linear-gradient(135deg, #0ea5e9, #1e3a8a)",
+  forest:
+    "linear-gradient(135deg, #15803d, #052e16)",
+  sunset:
+    "linear-gradient(135deg, #fb7185, #f97316, #7c3aed)",
+  midnight:
+    "linear-gradient(135deg, #0f172a, #312e81)",
+};
+
+const ACCENT_COLORS: Record<
+  AccentColor,
+  string
+> = {
+  blue: "#2563eb",
+  purple: "#7c3aed",
+  green: "#16a34a",
+  orange: "#ea580c",
+  pink: "#db2777",
+};
+
+const TAB_COLORS: Record<
+  TabColor,
+  string
+> = {
+  slate: "#475569",
+  blue: "#2563eb",
+  green: "#16a34a",
+  amber: "#d97706",
+  rose: "#e11d48",
+};
+
 type ModalChecklistItem = {
   id?: number;
   text: string;
@@ -75,20 +140,26 @@ export default function BoardClient({
   const router = useRouter();
   const supabase = createClient();
 
-  const [currentUserId, setCurrentUserId] =
-    useState<string | null>(null);
+  const [
+    currentUserId,
+    setCurrentUserId,
+  ] = useState<string | null>(null);
 
   const [board, setBoard] =
     useState<Board | null>(null);
 
-  const [boardMembers, setBoardMembers] =
-    useState<BoardMember[]>([]);
+  const [
+    boardMembers,
+    setBoardMembers,
+  ] = useState<BoardMember[]>([]);
 
   const [cards, setCards] =
     useState<Card[]>([]);
 
-  const [checklistItems, setChecklistItems] =
-    useState<ChecklistItem[]>([]);
+  const [
+    checklistItems,
+    setChecklistItems,
+  ] = useState<ChecklistItem[]>([]);
 
   const [comments, setComments] =
     useState<Comment[]>([]);
@@ -101,8 +172,10 @@ export default function BoardClient({
     setIsCardModalOpen,
   ] = useState(false);
 
-  const [editingCard, setEditingCard] =
-    useState<Card | null>(null);
+  const [
+    editingCard,
+    setEditingCard,
+  ] = useState<Card | null>(null);
 
   const [cardTitle, setCardTitle] =
     useState("");
@@ -112,14 +185,20 @@ export default function BoardClient({
     setCardDescription,
   ] = useState("");
 
-  const [cardDueDate, setCardDueDate] =
-    useState("");
+  const [
+    cardDueDate,
+    setCardDueDate,
+  ] = useState("");
 
-  const [cardPriority, setCardPriority] =
-    useState<Priority>("medium");
+  const [
+    cardPriority,
+    setCardPriority,
+  ] = useState<Priority>("medium");
 
-  const [newCardStatus, setNewCardStatus] =
-    useState<CardStatus>("todo");
+  const [
+    newCardStatus,
+    setNewCardStatus,
+  ] = useState<CardStatus>("todo");
 
   const [
     deleteCardTarget,
@@ -129,15 +208,18 @@ export default function BoardClient({
   const [
     modalChecklistItems,
     setModalChecklistItems,
-  ] = useState<ModalChecklistItem[]>([]);
+  ] =
+    useState<ModalChecklistItem[]>([]);
 
   const [
     newChecklistText,
     setNewChecklistText,
   ] = useState("");
 
-  const [modalComments, setModalComments] =
-    useState<Comment[]>([]);
+  const [
+    modalComments,
+    setModalComments,
+  ] = useState<Comment[]>([]);
 
   const [
     newCommentText,
@@ -149,19 +231,25 @@ export default function BoardClient({
     setIsInviteModalOpen,
   ] = useState(false);
 
-  const [inviteEmail, setInviteEmail] =
-    useState("");
+  const [
+    inviteEmail,
+    setInviteEmail,
+  ] = useState("");
 
   const [
     isSendingInvite,
     setIsSendingInvite,
   ] = useState(false);
 
-  const [inviteMessage, setInviteMessage] =
-    useState("");
+  const [
+    inviteMessage,
+    setInviteMessage,
+  ] = useState("");
 
-  const [inviteError, setInviteError] =
-    useState("");
+  const [
+    inviteError,
+    setInviteError,
+  ] = useState("");
 
   const [
     isMembersModalOpen,
@@ -183,10 +271,34 @@ export default function BoardClient({
     setMembersError,
   ] = useState("");
 
+  const [
+    preferences,
+    setPreferences,
+  ] = useState<UserPreferences>({
+    wallpaper: "default",
+    accent_color: "blue",
+    tab_color: "slate",
+  });
+
   const isOwner =
     board !== null &&
     currentUserId !== null &&
     board.user_id === currentUserId;
+
+  const wallpaperBackground =
+    WALLPAPER_STYLES[
+      preferences.wallpaper
+    ];
+
+  const accentColor =
+    ACCENT_COLORS[
+      preferences.accent_color
+    ];
+
+  const tabColor =
+    TAB_COLORS[
+      preferences.tab_color
+    ];
 
   useEffect(() => {
     initializeBoard();
@@ -211,7 +323,8 @@ export default function BoardClient({
   async function initializeBoard() {
     setLoading(true);
 
-    const user = await getCurrentUser();
+    const user =
+      await getCurrentUser();
 
     if (!user) {
       setLoading(false);
@@ -221,9 +334,43 @@ export default function BoardClient({
     await Promise.all([
       loadBoard(),
       loadCards(),
+      loadPreferences(user.id),
     ]);
 
     setLoading(false);
+  }
+
+  async function loadPreferences(
+    userId: string
+  ) {
+    const { data, error } =
+      await supabase
+        .from("user_preferences")
+        .select(
+          "wallpaper, accent_color, tab_color"
+        )
+        .eq("user_id", userId)
+        .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Error loading preferences:",
+        error.message
+      );
+
+      return;
+    }
+
+    if (!data) return;
+
+    setPreferences({
+      wallpaper:
+        data.wallpaper as Wallpaper,
+      accent_color:
+        data.accent_color as AccentColor,
+      tab_color:
+        data.tab_color as TabColor,
+    });
   }
 
   // -----------------------------------
@@ -231,16 +378,18 @@ export default function BoardClient({
   // -----------------------------------
 
   async function loadBoard() {
-    const { data, error } = await supabase
-      .from("boards")
-      .select("*")
-      .eq("id", boardId)
-      .single();
+    const { data, error } =
+      await supabase
+        .from("boards")
+        .select("*")
+        .eq("id", boardId)
+        .single();
 
     if (error) {
       alert(
         `Error loading board: ${error.message}`
       );
+
       return;
     }
 
@@ -255,22 +404,25 @@ export default function BoardClient({
     setIsLoadingMembers(true);
     setMembersError("");
 
-    const { data, error } = await supabase
-      .from("board_members")
-      .select(
-        "id, board_id, user_id, role, email, created_at"
-      )
-      .eq("board_id", boardId)
-      .order("created_at", {
-        ascending: true,
-      });
+    const { data, error } =
+      await supabase
+        .from("board_members")
+        .select(
+          "id, board_id, user_id, role, email, created_at"
+        )
+        .eq("board_id", boardId)
+        .order("created_at", {
+          ascending: true,
+        });
 
     if (error) {
       setMembersError(
         `Error loading members: ${error.message}`
       );
+
       setBoardMembers([]);
       setIsLoadingMembers(false);
+
       return;
     }
 
@@ -281,6 +433,7 @@ export default function BoardClient({
   async function openMembersModal() {
     setMembersError("");
     setIsMembersModalOpen(true);
+
     await loadBoardMembers();
   }
 
@@ -300,14 +453,17 @@ export default function BoardClient({
       setMembersError(
         "The board owner cannot be removed."
       );
+
       return;
     }
 
-    const confirmed = window.confirm(
-      `Remove ${
-        member.email || "this member"
-      } from the board?`
-    );
+    const confirmed =
+      window.confirm(
+        `Remove ${
+          member.email ||
+          "this member"
+        } from the board?`
+      );
 
     if (!confirmed) return;
 
@@ -334,6 +490,7 @@ export default function BoardClient({
       );
 
       setRemovingMemberId(null);
+
       return;
     }
 
@@ -362,6 +519,7 @@ export default function BoardClient({
       alert(
         `Error loading cards: ${cardError.message}`
       );
+
       return;
     }
 
@@ -370,9 +528,12 @@ export default function BoardClient({
 
     setCards(loadedCards);
 
-    if (loadedCards.length === 0) {
+    if (
+      loadedCards.length === 0
+    ) {
       setChecklistItems([]);
       setComments([]);
+
       return;
     }
 
@@ -402,10 +563,13 @@ export default function BoardClient({
         }),
     ]);
 
-    if (checklistResult.error) {
+    if (
+      checklistResult.error
+    ) {
       alert(
         `Error loading checklists: ${checklistResult.error.message}`
       );
+
       return;
     }
 
@@ -413,6 +577,7 @@ export default function BoardClient({
       alert(
         `Error loading comments: ${commentsResult.error.message}`
       );
+
       return;
     }
 
@@ -433,6 +598,7 @@ export default function BoardClient({
     setInviteEmail("");
     setInviteMessage("");
     setInviteError("");
+
     setIsInviteModalOpen(true);
   }
 
@@ -440,20 +606,23 @@ export default function BoardClient({
     if (isSendingInvite) return;
 
     setIsInviteModalOpen(false);
+
     setInviteEmail("");
     setInviteMessage("");
     setInviteError("");
   }
 
   async function sendBoardInvite() {
-    const email = inviteEmail
-      .trim()
-      .toLowerCase();
+    const email =
+      inviteEmail
+        .trim()
+        .toLowerCase();
 
     if (!email) {
       setInviteError(
         "Enter an email address."
       );
+
       return;
     }
 
@@ -466,6 +635,7 @@ export default function BoardClient({
       setInviteError(
         "Only the board owner can invite members."
       );
+
       return;
     }
 
@@ -475,7 +645,8 @@ export default function BoardClient({
 
     const {
       data: invite,
-      error: createInviteError,
+      error:
+        createInviteError,
     } = await supabase
       .from("board_invites")
       .insert({
@@ -498,33 +669,37 @@ export default function BoardClient({
         setInviteError(
           "That email already has a pending invite to this board."
         );
+
         return;
       }
 
       setInviteError(
         `Error creating invite: ${createInviteError.message}`
       );
+
       return;
     }
 
     try {
-      const response = await fetch(
-        "/api/send-board-invite",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            email,
-            inviteId: invite.id,
-            boardName:
-              board?.name ||
-              "Boardly board",
-          }),
-        }
-      );
+      const response =
+        await fetch(
+          "/api/send-board-invite",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              email,
+              inviteId:
+                invite.id,
+              boardName:
+                board?.name ||
+                "Boardly board",
+            }),
+          }
+        );
 
       const result =
         await response.json();
@@ -534,6 +709,7 @@ export default function BoardClient({
           result.error ||
             "Invite was created, but the email could not be sent."
         );
+
         return;
       }
 
@@ -699,7 +875,10 @@ export default function BoardClient({
     setModalChecklistItems(
       (items) =>
         items.map(
-          (item, itemIndex) =>
+          (
+            item,
+            itemIndex
+          ) =>
             itemIndex === index
               ? {
                   ...item,
@@ -718,8 +897,12 @@ export default function BoardClient({
       (items) =>
         items
           .filter(
-            (_, itemIndex) =>
-              itemIndex !== index
+            (
+              _,
+              itemIndex
+            ) =>
+              itemIndex !==
+              index
           )
           .map(
             (
@@ -749,7 +932,8 @@ export default function BoardClient({
       modalChecklistItems
         .filter(
           (item) =>
-            item.id !== undefined
+            item.id !==
+            undefined
         )
         .map(
           (item) =>
@@ -765,8 +949,7 @@ export default function BoardClient({
             )
         )
         .map(
-          (item) =>
-            item.id
+          (item) => item.id
         );
 
     if (
@@ -774,7 +957,9 @@ export default function BoardClient({
     ) {
       const { error } =
         await supabase
-          .from("checklist_items")
+          .from(
+            "checklist_items"
+          )
           .delete()
           .eq(
             "card_id",
@@ -799,7 +984,9 @@ export default function BoardClient({
       index++
     ) {
       const item =
-        modalChecklistItems[index];
+        modalChecklistItems[
+          index
+        ];
 
       const position =
         index + 1;
@@ -813,7 +1000,8 @@ export default function BoardClient({
               "checklist_items"
             )
             .update({
-              text: item.text,
+              text:
+                item.text,
               completed:
                 item.completed,
               position,
@@ -839,10 +1027,12 @@ export default function BoardClient({
               "checklist_items"
             )
             .insert({
-              card_id: cardId,
+              card_id:
+                cardId,
               user_id:
                 userId,
-              text: item.text,
+              text:
+                item.text,
               completed:
                 item.completed,
               position,
@@ -862,8 +1052,7 @@ export default function BoardClient({
   // -----------------------------------
 
   async function addComment() {
-    if (!editingCard)
-      return;
+    if (!editingCard) return;
 
     const text =
       newCommentText.trim();
@@ -883,8 +1072,7 @@ export default function BoardClient({
       .insert({
         card_id:
           editingCard.id,
-        user_id:
-          user.id,
+        user_id: user.id,
         text,
       })
       .select()
@@ -894,6 +1082,7 @@ export default function BoardClient({
       alert(
         `Error adding comment: ${error.message}`
       );
+
       return;
     }
 
@@ -929,6 +1118,7 @@ export default function BoardClient({
       alert(
         "You can only delete your own comments."
       );
+
       return;
     }
 
@@ -949,6 +1139,7 @@ export default function BoardClient({
       alert(
         `Error deleting comment: ${error.message}`
       );
+
       return;
     }
 
@@ -997,15 +1188,12 @@ export default function BoardClient({
             .update({
               title:
                 trimmedTitle,
-
               description:
                 trimmedDescription ||
                 null,
-
               due_date:
                 cardDueDate ||
                 null,
-
               priority:
                 cardPriority ||
                 null,
@@ -1052,29 +1240,22 @@ export default function BoardClient({
         .insert({
           title:
             trimmedTitle,
-
           description:
             trimmedDescription ||
             null,
-
           due_date:
             cardDueDate ||
             null,
-
           priority:
             cardPriority ||
             null,
-
           status:
             newCardStatus,
-
           position:
             cardsInColumn.length +
             1,
-
           user_id:
             user.id,
-
           board_id:
             boardId,
         })
@@ -1133,6 +1314,7 @@ export default function BoardClient({
       alert(
         `Error deleting card: ${error.message}`
       );
+
       return;
     }
 
@@ -1178,13 +1360,9 @@ export default function BoardClient({
       await supabase
         .from("cards")
         .update({
-          status:
-            newStatus,
+          status: newStatus,
         })
-        .eq(
-          "id",
-          cardId
-        )
+        .eq("id", cardId)
         .eq(
           "board_id",
           boardId
@@ -1194,6 +1372,7 @@ export default function BoardClient({
       alert(
         `Error moving card: ${error.message}`
       );
+
       return;
     }
 
@@ -1230,11 +1409,12 @@ export default function BoardClient({
   ) {
     event.preventDefault();
 
-    const cardId = Number(
-      event.dataTransfer.getData(
-        "cardId"
-      )
-    );
+    const cardId =
+      Number(
+        event.dataTransfer.getData(
+          "cardId"
+        )
+      );
 
     if (!cardId) return;
 
@@ -1506,9 +1686,12 @@ export default function BoardClient({
 
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
               <div
-                className="h-full rounded-full bg-blue-600 transition-all"
+                className="h-full rounded-full transition-all"
                 style={{
-                  width: `${checklist.percentage}%`,
+                  width:
+                    `${checklist.percentage}%`,
+                  backgroundColor:
+                    accentColor,
                 }}
               />
             </div>
@@ -1577,24 +1760,28 @@ export default function BoardClient({
   }) {
     return (
       <div
-        onDragOver={
-          allowDrop
-        }
+        onDragOver={allowDrop}
         onDrop={(event) =>
           handleDrop(
             event,
             status
           )
         }
-        className="flex min-h-[420px] w-80 flex-col rounded-2xl bg-slate-200/80 p-4"
+        className="flex min-h-[420px] w-80 flex-col rounded-2xl border border-white/40 bg-white/85 p-4 shadow-lg backdrop-blur"
       >
-        <div className="flex items-center justify-between">
+        <div
+          className="flex items-center justify-between rounded-xl px-3 py-3 text-white"
+          style={{
+            backgroundColor:
+              tabColor,
+          }}
+        >
           <div>
-            <h2 className="font-semibold text-slate-800">
+            <h2 className="font-semibold text-white">
               {title}
             </h2>
 
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-white/80">
               {
                 cardsForColumn.length
               }{" "}
@@ -1612,7 +1799,7 @@ export default function BoardClient({
                 status
               )
             }
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-xl text-slate-600 transition hover:bg-white hover:text-slate-900"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-xl text-white transition hover:bg-white/20"
           >
             +
           </button>
@@ -1688,8 +1875,16 @@ export default function BoardClient({
 
   return (
     <>
-      <main className="min-h-screen bg-slate-100">
-        <div className="border-b border-slate-200 bg-white">
+      <main
+        className="min-h-screen"
+        style={{
+          background:
+            wallpaperBackground,
+          backgroundAttachment:
+            "fixed",
+        }}
+      >
+        <div className="border-b border-white/30 bg-white/90 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
             <button
               type="button"
@@ -1703,6 +1898,36 @@ export default function BoardClient({
               Boardly
             </button>
 
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    "/protected/settings/preferences"
+                  )
+                }
+                className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+              >
+                Preferences
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    "/protected/boards"
+                  )
+                }
+                className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+              >
+                All boards
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-auto max-w-7xl p-8">
+          <div className="rounded-3xl bg-white/85 p-6 shadow-xl backdrop-blur-md">
             <button
               type="button"
               onClick={() =>
@@ -1710,99 +1935,91 @@ export default function BoardClient({
                   "/protected/boards"
                 )
               }
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+              className="text-sm font-medium text-slate-500 hover:text-slate-900"
             >
-              All boards
+              ← Back to boards
             </button>
-          </div>
-        </div>
 
-        <div className="mx-auto max-w-7xl p-8">
-          <button
-            type="button"
-            onClick={() =>
-              router.push(
-                "/protected/boards"
-              )
-            }
-            className="text-sm font-medium text-slate-500 hover:text-slate-900"
-          >
-            ← Back to boards
-          </button>
+            <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                    {board?.name ||
+                      "Untitled board"}
+                  </h1>
 
-          <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                  {board?.name ||
-                    "Untitled board"}
-                </h1>
+                  {isOwner ? (
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                      Owner
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
+                      Shared
+                    </span>
+                  )}
+                </div>
 
-                {isOwner ? (
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                    Owner
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
-                    Shared
-                  </span>
-                )}
+                <p className="mt-2 text-sm text-slate-500">
+                  Drag cards between
+                  columns to update their
+                  status.
+                </p>
               </div>
 
-              <p className="mt-2 text-sm text-slate-500">
-                Drag cards between columns to update their status.
-              </p>
+              {isOwner && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={
+                      openMembersModal
+                    }
+                    className="rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-300"
+                  >
+                    Manage members
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      openInviteModal
+                    }
+                    className="rounded-xl px-4 py-2.5 text-sm font-medium text-white transition hover:brightness-95"
+                    style={{
+                      backgroundColor:
+                        accentColor,
+                    }}
+                  >
+                    Invite member
+                  </button>
+                </div>
+              )}
             </div>
 
-            {isOwner && (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={
-                    openMembersModal
-                  }
-                  className="rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-300"
-                >
-                  Manage members
-                </button>
+            <div className="mt-8 flex gap-6 overflow-x-auto pb-8">
+              <BoardColumn
+                title="To Do"
+                status="todo"
+                cardsForColumn={
+                  todoCards
+                }
+              />
 
-                <button
-                  type="button"
-                  onClick={
-                    openInviteModal
-                  }
-                  className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
-                >
-                  Invite member
-                </button>
-              </div>
-            )}
-          </div>
+              <BoardColumn
+                title="In Progress"
+                status="in_progress"
+                cardsForColumn={
+                  progressCards
+                }
+              />
 
-          <div className="mt-8 flex gap-6 overflow-x-auto pb-8">
-            <BoardColumn
-              title="To Do"
-              status="todo"
-              cardsForColumn={
-                todoCards
-              }
-            />
-
-            <BoardColumn
-              title="In Progress"
-              status="in_progress"
-              cardsForColumn={
-                progressCards
-              }
-            />
-
-            <BoardColumn
-              title="Done"
-              status="done"
-              cardsForColumn={
-                doneCards
-              }
-            />
+              <BoardColumn
+                title="Done"
+                status="done"
+                cardsForColumn={
+                  doneCards
+                }
+              />
+            </div>
           </div>
         </div>
       </main>
@@ -1820,7 +2037,9 @@ export default function BoardClient({
                   </h2>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    People who currently have access to this board.
+                    People who currently
+                    have access to this
+                    board.
                   </p>
                 </div>
 
@@ -1829,11 +2048,9 @@ export default function BoardClient({
                   onClick={
                     closeMembersModal
                   }
-                  disabled={
-                    Boolean(
-                      removingMemberId
-                    )
-                  }
+                  disabled={Boolean(
+                    removingMemberId
+                  )}
                   className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
                 >
                   ✕
@@ -1920,11 +2137,9 @@ export default function BoardClient({
                   onClick={
                     closeMembersModal
                   }
-                  disabled={
-                    Boolean(
-                      removingMemberId
-                    )
-                  }
+                  disabled={Boolean(
+                    removingMemberId
+                  )}
                   className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
                 >
                   Done
@@ -1947,7 +2162,9 @@ export default function BoardClient({
                   </h2>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    Invite someone to collaborate on this board.
+                    Invite someone to
+                    collaborate on this
+                    board.
                   </p>
                 </div>
 
@@ -1972,12 +2189,8 @@ export default function BoardClient({
               <input
                 type="email"
                 autoFocus
-                value={
-                  inviteEmail
-                }
-                onChange={(
-                  event
-                ) => {
+                value={inviteEmail}
+                onChange={(event) => {
                   setInviteEmail(
                     event.target.value
                   );
@@ -1993,6 +2206,7 @@ export default function BoardClient({
                     "Enter"
                   ) {
                     event.preventDefault();
+
                     sendBoardInvite();
                   }
                 }}
@@ -2035,7 +2249,11 @@ export default function BoardClient({
                     isSendingInvite ||
                     !inviteEmail.trim()
                   }
-                  className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg px-5 py-2 text-sm font-medium text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{
+                    backgroundColor:
+                      accentColor,
+                  }}
                 >
                   {isSendingInvite
                     ? "Sending..."
@@ -2075,9 +2293,7 @@ export default function BoardClient({
 
             <input
               autoFocus
-              value={
-                cardTitle
-              }
+              value={cardTitle}
               onChange={(event) =>
                 setCardTitle(
                   event.target.value
@@ -2214,8 +2430,11 @@ export default function BoardClient({
                   </h3>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    {modalCompleted}/
-                    {modalTotal} complete
+                    {
+                      modalCompleted
+                    }
+                    /{modalTotal}{" "}
+                    complete
                   </p>
                 </div>
 
@@ -2232,9 +2451,12 @@ export default function BoardClient({
               {modalTotal > 0 && (
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
                   <div
-                    className="h-full rounded-full bg-blue-600 transition-all"
+                    className="h-full rounded-full transition-all"
                     style={{
-                      width: `${modalPercentage}%`,
+                      width:
+                        `${modalPercentage}%`,
+                      backgroundColor:
+                        accentColor,
                     }}
                   />
                 </div>
@@ -2260,6 +2482,7 @@ export default function BoardClient({
                       "Enter"
                     ) {
                       event.preventDefault();
+
                       addChecklistItem();
                     }
                   }}
@@ -2311,9 +2534,7 @@ export default function BoardClient({
                             : "text-slate-700"
                         }`}
                       >
-                        {
-                          item.text
-                        }
+                        {item.text}
                       </span>
 
                       <button
@@ -2334,7 +2555,8 @@ export default function BoardClient({
                 {modalChecklistItems.length ===
                   0 && (
                   <div className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-400">
-                    No checklist items yet.
+                    No checklist
+                    items yet.
                   </div>
                 )}
               </div>
@@ -2348,7 +2570,9 @@ export default function BoardClient({
                   </h3>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    {modalComments.length}{" "}
+                    {
+                      modalComments.length
+                    }{" "}
                     {modalComments.length ===
                     1
                       ? "comment"
@@ -2428,7 +2652,8 @@ export default function BoardClient({
                   {modalComments.length ===
                     0 && (
                     <div className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-400">
-                      No comments yet.
+                      No comments
+                      yet.
                     </div>
                   )}
                 </div>
@@ -2448,10 +2673,12 @@ export default function BoardClient({
 
               <button
                 type="button"
-                onClick={
-                  saveCard
-                }
-                className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                onClick={saveCard}
+                className="rounded-lg px-5 py-2 text-sm font-medium text-white transition hover:brightness-95"
+                style={{
+                  backgroundColor:
+                    accentColor,
+                }}
               >
                 {editingCard
                   ? "Save changes"
@@ -2472,9 +2699,13 @@ export default function BoardClient({
             </h2>
 
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              This will permanently delete “
-              {deleteCardTarget.title}
-              ”, including its checklist and comments.
+              This will permanently
+              delete “
+              {
+                deleteCardTarget.title
+              }
+              ”, including its
+              checklist and comments.
             </p>
 
             <div className="mt-6 flex justify-end gap-3">
