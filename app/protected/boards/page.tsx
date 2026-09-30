@@ -43,10 +43,7 @@ type UserPreferences = {
   accent_color: AccentColor;
 };
 
-const WALLPAPER_STYLES: Record<
-  Wallpaper,
-  string
-> = {
+const WALLPAPER_STYLES: Record<Wallpaper, string> = {
   default:
     "linear-gradient(135deg, #f8fafc, #e2e8f0)",
   ocean:
@@ -59,10 +56,7 @@ const WALLPAPER_STYLES: Record<
     "linear-gradient(135deg, #0f172a, #312e81)",
 };
 
-const ACCENT_COLORS: Record<
-  AccentColor,
-  string
-> = {
+const ACCENT_COLORS: Record<AccentColor, string> = {
   blue: "#2563eb",
   purple: "#7c3aed",
   green: "#16a34a",
@@ -74,27 +68,21 @@ export default function BoardsPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [boards, setBoards] =
-    useState<Board[]>([]);
+  const [boards, setBoards] = useState<Board[]>([]);
 
-  const [boardStats, setBoardStats] =
-    useState<
-      Record<number, BoardStats>
-    >({});
+  const [boardStats, setBoardStats] = useState<
+    Record<number, BoardStats>
+  >({});
 
   const [currentUserId, setCurrentUserId] =
     useState<string | null>(null);
 
-  const [userEmail, setUserEmail] =
-    useState("");
+  const [userEmail, setUserEmail] = useState("");
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [
-    isCreateModalOpen,
-    setIsCreateModalOpen,
-  ] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] =
+    useState(false);
 
   const [newBoardName, setNewBoardName] =
     useState("");
@@ -115,14 +103,10 @@ export default function BoardsPage() {
     });
 
   const wallpaperBackground =
-    WALLPAPER_STYLES[
-      preferences.wallpaper
-    ];
+    WALLPAPER_STYLES[preferences.wallpaper];
 
   const accentColor =
-    ACCENT_COLORS[
-      preferences.accent_color
-    ];
+    ACCENT_COLORS[preferences.accent_color];
 
   useEffect(() => {
     initializeDashboard();
@@ -131,8 +115,7 @@ export default function BoardsPage() {
   async function initializeDashboard() {
     setLoading(true);
 
-    const user =
-      await getCurrentUser();
+    const user = await getCurrentUser();
 
     if (!user) {
       router.push("/auth/login");
@@ -163,24 +146,18 @@ export default function BoardsPage() {
     return user;
   }
 
-  async function loadPreferences(
-    userId: string
-  ) {
-    const { data, error } =
-      await supabase
-        .from("user_preferences")
-        .select(
-          "wallpaper, accent_color"
-        )
-        .eq("user_id", userId)
-        .maybeSingle();
+  async function loadPreferences(userId: string) {
+    const { data, error } = await supabase
+      .from("user_preferences")
+      .select("wallpaper, accent_color")
+      .eq("user_id", userId)
+      .maybeSingle();
 
     if (error) {
       console.error(
         "Error loading preferences:",
         error
       );
-
       return;
     }
 
@@ -188,25 +165,14 @@ export default function BoardsPage() {
 
     setPreferences({
       wallpaper:
-        (data.wallpaper as Wallpaper) ||
-        "default",
+        (data.wallpaper as Wallpaper) || "default",
 
       accent_color:
-        (data.accent_color as AccentColor) ||
-        "blue",
+        (data.accent_color as AccentColor) || "blue",
     });
   }
 
   async function loadBoardsAndStats() {
-    /*
-      The RLS policies decide which
-      boards the signed-in user can see.
-
-      This allows this page to include
-      both owned boards and boards that
-      have been shared with the user.
-    */
-
     const {
       data: boardsData,
       error: boardsError,
@@ -221,7 +187,6 @@ export default function BoardsPage() {
       alert(
         `Error loading boards: ${boardsError.message}`
       );
-
       return;
     }
 
@@ -234,10 +199,9 @@ export default function BoardsPage() {
       return;
     }
 
-    const boardIds =
-      availableBoards.map(
-        (board) => board.id
-      );
+    const boardIds = availableBoards.map(
+      (board) => board.id
+    );
 
     const {
       data: cardsData,
@@ -253,7 +217,6 @@ export default function BoardsPage() {
       alert(
         `Error loading card totals: ${cardsError.message}`
       );
-
       return;
     }
 
@@ -262,16 +225,14 @@ export default function BoardsPage() {
       BoardStats
     > = {};
 
-    availableBoards.forEach(
-      (board) => {
-        stats[board.id] = {
-          total: 0,
-          todo: 0,
-          inProgress: 0,
-          done: 0,
-        };
-      }
-    );
+    availableBoards.forEach((board) => {
+      stats[board.id] = {
+        total: 0,
+        todo: 0,
+        inProgress: 0,
+        done: 0,
+      };
+    });
 
     (cardsData || []).forEach(
       (card: Card) => {
@@ -282,17 +243,14 @@ export default function BoardsPage() {
           return;
         }
 
-        stats[card.board_id].total +=
-          1;
+        stats[card.board_id].total += 1;
 
         if (card.status === "todo") {
-          stats[card.board_id].todo +=
-            1;
+          stats[card.board_id].todo += 1;
         }
 
         if (
-          card.status ===
-          "in_progress"
+          card.status === "in_progress"
         ) {
           stats[
             card.board_id
@@ -300,8 +258,7 @@ export default function BoardsPage() {
         }
 
         if (card.status === "done") {
-          stats[card.board_id].done +=
-            1;
+          stats[card.board_id].done += 1;
         }
       }
     );
@@ -326,8 +283,7 @@ export default function BoardsPage() {
 
     if (!trimmedName) return;
 
-    const user =
-      await getCurrentUser();
+    const user = await getCurrentUser();
 
     if (!user) {
       router.push("/auth/login");
@@ -350,7 +306,6 @@ export default function BoardsPage() {
       alert(
         `Error creating board: ${boardError.message}`
       );
-
       return;
     }
 
@@ -374,39 +329,30 @@ export default function BoardsPage() {
       alert(
         `Error creating owner membership: ${memberError.message}`
       );
-
       return;
     }
 
-    setBoards(
-      (currentBoards) => [
-        board,
-        ...currentBoards,
-      ]
-    );
+    setBoards((currentBoards) => [
+      board,
+      ...currentBoards,
+    ]);
 
-    setBoardStats(
-      (currentStats) => ({
-        ...currentStats,
-
-        [board.id]: {
-          total: 0,
-          todo: 0,
-          inProgress: 0,
-          done: 0,
-        },
-      })
-    );
+    setBoardStats((currentStats) => ({
+      ...currentStats,
+      [board.id]: {
+        total: 0,
+        todo: 0,
+        inProgress: 0,
+        done: 0,
+      },
+    }));
 
     closeCreateModal();
   }
 
-  function openRenameModal(
-    board: Board
-  ) {
+  function openRenameModal(board: Board) {
     if (
-      board.user_id !==
-      currentUserId
+      board.user_id !== currentUserId
     ) {
       return;
     }
@@ -428,8 +374,7 @@ export default function BoardsPage() {
 
     if (!trimmedName) return;
 
-    const user =
-      await getCurrentUser();
+    const user = await getCurrentUser();
 
     if (!user) {
       router.push("/auth/login");
@@ -437,8 +382,7 @@ export default function BoardsPage() {
     }
 
     if (
-      renameTarget.user_id !==
-      user.id
+      renameTarget.user_id !== user.id
     ) {
       alert(
         "Only the board owner can rename this board."
@@ -448,35 +392,30 @@ export default function BoardsPage() {
       return;
     }
 
-    const { error } =
-      await supabase
-        .from("boards")
-        .update({
-          name: trimmedName,
-        })
-        .eq("id", renameTarget.id)
-        .eq("user_id", user.id);
+    const { error } = await supabase
+      .from("boards")
+      .update({
+        name: trimmedName,
+      })
+      .eq("id", renameTarget.id)
+      .eq("user_id", user.id);
 
     if (error) {
       alert(
         `Error renaming board: ${error.message}`
       );
-
       return;
     }
 
-    setBoards(
-      (currentBoards) =>
-        currentBoards.map(
-          (board) =>
-            board.id ===
-            renameTarget.id
-              ? {
-                  ...board,
-                  name: trimmedName,
-                }
-              : board
-        )
+    setBoards((currentBoards) =>
+      currentBoards.map((board) =>
+        board.id === renameTarget.id
+          ? {
+              ...board,
+              name: trimmedName,
+            }
+          : board
+      )
     );
 
     closeRenameModal();
@@ -485,8 +424,7 @@ export default function BoardsPage() {
   async function confirmDeleteBoard() {
     if (!deleteTarget) return;
 
-    const user =
-      await getCurrentUser();
+    const user = await getCurrentUser();
 
     if (!user) {
       router.push("/auth/login");
@@ -494,8 +432,7 @@ export default function BoardsPage() {
     }
 
     if (
-      deleteTarget.user_id !==
-      user.id
+      deleteTarget.user_id !== user.id
     ) {
       alert(
         "Only the board owner can delete this board."
@@ -505,61 +442,43 @@ export default function BoardsPage() {
       return;
     }
 
-    /*
-      Your database relationships use
-      cascading deletes for the board
-      membership and card child data.
-
-      We only delete the board itself.
-    */
-
     const { error: boardError } =
       await supabase
         .from("boards")
         .delete()
-        .eq(
-          "id",
-          deleteTarget.id
-        )
+        .eq("id", deleteTarget.id)
         .eq("user_id", user.id);
 
     if (boardError) {
       alert(
         `Error deleting board: ${boardError.message}`
       );
-
       return;
     }
 
-    setBoards(
-      (currentBoards) =>
-        currentBoards.filter(
-          (board) =>
-            board.id !==
-            deleteTarget.id
-        )
+    setBoards((currentBoards) =>
+      currentBoards.filter(
+        (board) =>
+          board.id !== deleteTarget.id
+      )
     );
 
-    setBoardStats(
-      (currentStats) => {
-        const updatedStats = {
-          ...currentStats,
-        };
+    setBoardStats((currentStats) => {
+      const updatedStats = {
+        ...currentStats,
+      };
 
-        delete updatedStats[
-          deleteTarget.id
-        ];
+      delete updatedStats[
+        deleteTarget.id
+      ];
 
-        return updatedStats;
-      }
-    );
+      return updatedStats;
+    });
 
     setDeleteTarget(null);
   }
 
-  function openBoard(
-    boardId: number
-  ) {
+  function openBoard(boardId: number) {
     router.push(
       `/protected/boards/${boardId}`
     );
@@ -573,7 +492,6 @@ export default function BoardsPage() {
       alert(
         `Error logging out: ${error.message}`
       );
-
       return;
     }
 
@@ -586,10 +504,12 @@ export default function BoardsPage() {
       <main
         className="min-h-screen"
         style={{
-          background:
+          backgroundImage:
             wallpaperBackground,
-          backgroundAttachment:
-            "fixed",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
         }}
       >
         <div className="border-b border-white/30 bg-white/90 backdrop-blur">
@@ -620,10 +540,12 @@ export default function BoardsPage() {
       <main
         className="min-h-screen"
         style={{
-          background:
+          backgroundImage:
             wallpaperBackground,
-          backgroundAttachment:
-            "fixed",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
         }}
       >
         {/* TOP NAVIGATION */}
@@ -695,9 +617,7 @@ export default function BoardsPage() {
 
               <button
                 type="button"
-                onClick={
-                  openCreateModal
-                }
+                onClick={openCreateModal}
                 className="rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
                 style={{
                   backgroundColor:
@@ -707,8 +627,6 @@ export default function BoardsPage() {
                 + Create Board
               </button>
             </div>
-
-            {/* NO BOARDS */}
 
             {boards.length === 0 ? (
               <div className="mt-10 rounded-2xl border border-dashed border-slate-300 bg-white/80 p-10 text-center shadow-sm backdrop-blur">
@@ -727,166 +645,147 @@ export default function BoardsPage() {
                 </h2>
 
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-                  Create your first
-                  board and start
-                  organizing tasks.
+                  Create your first board
+                  and start organizing
+                  tasks.
                 </p>
 
                 <button
                   type="button"
-                  onClick={
-                    openCreateModal
-                  }
+                  onClick={openCreateModal}
                   className="mt-5 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
                   style={{
                     backgroundColor:
                       accentColor,
                   }}
                 >
-                  Create your first
-                  board
+                  Create your first board
                 </button>
               </div>
             ) : (
               <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {boards.map(
-                  (board) => {
-                    const stats =
-                      boardStats[
-                        board.id
-                      ] || {
-                        total: 0,
-                        todo: 0,
-                        inProgress: 0,
-                        done: 0,
-                      };
+                {boards.map((board) => {
+                  const stats =
+                    boardStats[
+                      board.id
+                    ] || {
+                      total: 0,
+                      todo: 0,
+                      inProgress: 0,
+                      done: 0,
+                    };
 
-                    const isOwner =
-                      board.user_id ===
-                      currentUserId;
+                  const isOwner =
+                    board.user_id ===
+                    currentUserId;
 
-                    return (
-                      <div
-                        key={board.id}
-                        className="group overflow-hidden rounded-2xl border border-white/60 bg-white/90 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl"
+                  return (
+                    <div
+                      key={board.id}
+                      className="group overflow-hidden rounded-2xl border border-white/60 bg-white/90 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openBoard(board.id)
+                        }
+                        className="w-full p-6 text-left"
                       >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openBoard(
-                              board.id
-                            )
-                          }
-                          className="w-full p-6 text-left"
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p
-                                  className="text-xs font-semibold uppercase tracking-wide"
-                                  style={{
-                                    color:
-                                      accentColor,
-                                  }}
-                                >
-                                  Board
-                                </p>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p
+                                className="text-xs font-semibold uppercase tracking-wide"
+                                style={{
+                                  color:
+                                    accentColor,
+                                }}
+                              >
+                                Board
+                              </p>
 
-                                {isOwner ? (
-                                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-                                    Owner
-                                  </span>
-                                ) : (
-                                  <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
-                                    Shared
-                                  </span>
-                                )}
-                              </div>
-
-                              <h2 className="mt-2 text-xl font-bold text-slate-900">
-                                {
-                                  board.name
-                                }
-                              </h2>
+                              {isOwner ? (
+                                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+                                  Owner
+                                </span>
+                              ) : (
+                                <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+                                  Shared
+                                </span>
+                              )}
                             </div>
 
-                            <span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-600">
-                              →
-                            </span>
+                            <h2 className="mt-2 text-xl font-bold text-slate-900">
+                              {board.name}
+                            </h2>
                           </div>
 
-                          <p className="mt-5 text-sm font-medium text-slate-700">
-                            {
-                              stats.total
-                            }{" "}
-                            {stats.total ===
-                            1
-                              ? "card"
-                              : "cards"}
-                          </p>
-
-                          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
-                              {
-                                stats.todo
-                              }{" "}
-                              To Do
-                            </span>
-
-                            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">
-                              {
-                                stats.inProgress
-                              }{" "}
-                              In Progress
-                            </span>
-
-                            <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-700">
-                              {
-                                stats.done
-                              }{" "}
-                              Done
-                            </span>
-                          </div>
-                        </button>
-
-                        <div className="border-t border-slate-100 px-6 py-4">
-                          {isOwner ? (
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  openRenameModal(
-                                    board
-                                  )
-                                }
-                                className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-                              >
-                                Rename
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setDeleteTarget(
-                                    board
-                                  )
-                                }
-                                className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          ) : (
-                            <p className="text-xs font-medium text-slate-400">
-                              Shared with
-                              you
-                            </p>
-                          )}
+                          <span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-600">
+                            →
+                          </span>
                         </div>
+
+                        <p className="mt-5 text-sm font-medium text-slate-700">
+                          {stats.total}{" "}
+                          {stats.total === 1
+                            ? "card"
+                            : "cards"}
+                        </p>
+
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                            {stats.todo} To Do
+                          </span>
+
+                          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">
+                            {
+                              stats.inProgress
+                            }{" "}
+                            In Progress
+                          </span>
+
+                          <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-700">
+                            {stats.done} Done
+                          </span>
+                        </div>
+                      </button>
+
+                      <div className="border-t border-slate-100 px-6 py-4">
+                        {isOwner ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openRenameModal(
+                                  board
+                                )
+                              }
+                              className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+                            >
+                              Rename
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDeleteTarget(
+                                  board
+                                )
+                              }
+                              className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-xs font-medium text-slate-400">
+                            Shared with you
+                          </p>
+                        )}
                       </div>
-                    );
-                  }
-                )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -905,9 +804,7 @@ export default function BoardsPage() {
 
               <button
                 type="button"
-                onClick={
-                  closeCreateModal
-                }
+                onClick={closeCreateModal}
                 className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100"
               >
                 ✕
@@ -928,8 +825,7 @@ export default function BoardsPage() {
               }
               onKeyDown={(event) => {
                 if (
-                  event.key ===
-                  "Enter"
+                  event.key === "Enter"
                 ) {
                   createBoard();
                 }
@@ -941,9 +837,7 @@ export default function BoardsPage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={
-                  closeCreateModal
-                }
+                onClick={closeCreateModal}
                 className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
               >
                 Cancel
@@ -977,9 +871,7 @@ export default function BoardsPage() {
 
               <button
                 type="button"
-                onClick={
-                  closeRenameModal
-                }
+                onClick={closeRenameModal}
                 className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100"
               >
                 ✕
@@ -1000,8 +892,7 @@ export default function BoardsPage() {
               }
               onKeyDown={(event) => {
                 if (
-                  event.key ===
-                  "Enter"
+                  event.key === "Enter"
                 ) {
                   saveRename();
                 }
@@ -1012,9 +903,7 @@ export default function BoardsPage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={
-                  closeRenameModal
-                }
+                onClick={closeRenameModal}
                 className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
               >
                 Cancel
@@ -1046,8 +935,7 @@ export default function BoardsPage() {
             </h2>
 
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              This will permanently
-              delete “
+              This will permanently delete “
               {deleteTarget.name}” and
               everything inside it.
             </p>
@@ -1056,9 +944,7 @@ export default function BoardsPage() {
               <button
                 type="button"
                 onClick={() =>
-                  setDeleteTarget(
-                    null
-                  )
+                  setDeleteTarget(null)
                 }
                 className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
               >
@@ -1067,9 +953,7 @@ export default function BoardsPage() {
 
               <button
                 type="button"
-                onClick={
-                  confirmDeleteBoard
-                }
+                onClick={confirmDeleteBoard}
                 className="rounded-lg bg-red-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-red-700"
               >
                 Delete board
