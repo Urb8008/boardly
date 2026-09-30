@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -58,6 +58,18 @@ type Comment = {
   card_id: number;
   user_id: string;
   text: string;
+};
+
+type CardAttachment = {
+  id: number;
+  card_id: number;
+  board_id: number;
+  user_id: string;
+  file_name: string;
+  file_path: string;
+  file_type: string | null;
+  file_size: number | null;
+  created_at: string;
 };
 
 type Wallpaper =
@@ -225,6 +237,32 @@ export default function BoardClient({
     newCommentText,
     setNewCommentText,
   ] = useState("");
+
+  const [
+    modalAttachments,
+    setModalAttachments,
+  ] = useState<CardAttachment[]>([]);
+
+  const [
+    pendingAttachmentFiles,
+    setPendingAttachmentFiles,
+  ] = useState<File[]>([]);
+
+  const [
+    isDraggingAttachment,
+    setIsDraggingAttachment,
+  ] = useState(false);
+
+  const [
+    isUploadingAttachments,
+    setIsUploadingAttachments,
+  ] = useState(false);
+
+  const attachmentInputRef =
+    useRef<HTMLInputElement | null>(null);
+
+  const MAX_ATTACHMENT_SIZE =
+    20 * 1024 * 1024;
 
   const [
     isInviteModalOpen,
@@ -752,6 +790,10 @@ export default function BoardClient({
     setModalComments([]);
     setNewCommentText("");
 
+    setModalAttachments([]);
+    setPendingAttachmentFiles([]);
+    setIsDraggingAttachment(false);
+
     setIsCardModalOpen(true);
   }
 
@@ -828,6 +870,12 @@ export default function BoardClient({
 
     setNewCommentText("");
 
+    setModalAttachments([]);
+    setPendingAttachmentFiles([]);
+    setIsDraggingAttachment(false);
+
+    loadCardAttachments(card.id);
+
     setIsCardModalOpen(true);
   }
 
@@ -845,6 +893,10 @@ export default function BoardClient({
 
     setModalComments([]);
     setNewCommentText("");
+
+    setModalAttachments([]);
+    setPendingAttachmentFiles([]);
+    setIsDraggingAttachment(false);
   }
 
   // -----------------------------------
@@ -1051,6 +1103,380 @@ export default function BoardClient({
   }
 
   // -----------------------------------
+  // ATTACHMENTS
+  // -----------------------------------
+
+  async function loadCardAttachments(
+    cardId: number
+  ) {
+    const { data, error } =
+      await supabase
+        .from("card_attachments")
+        .select("*")
+        .eq("card_id", cardId)
+        .eq("board_id", boardId)
+        .order("created_at", {
+          ascending: true,
+        });
+
+    if (error) {
+      console.error(
+        "Error loading attachments:",
+        error.message
+      );
+
+      return;
+    }
+
+    setModalAttachments(
+      data || []
+    );
+  }
+
+  function formatFileSize(
+    bytes: number | null
+  ) {
+    if (
+      bytes === null ||
+      bytes === undefined
+    ) {
+      return "";
+    }
+
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    }
+
+    if (bytes < 1024 * 1024) {
+      return `${(
+        bytes / 1024
+      ).toFixed(1)} KB`;
+    }
+
+    return `${(
+      bytes /
+      (1024 * 1024)
+    ).toFixed(1)} MB`;
+  }
+
+  function addPendingFiles(
+    files: File[]
+  ) {
+    const validFiles =
+      files.filter(
+        (file) => {
+          if (
+            file.size >
+            MAX_ATTACHMENT_SIZE
+          ) {
+            alert(
+              `${file.name} is larger than 20 MB.`
+            );
+
+            return false;
+          }
+
+          return true;
+        }
+      );
+
+    if (
+      validFiles.length === 0
+    ) {
+      return;
+    }
+
+    setPendingAttachmentFiles(
+      (current) => {
+        const existingKeys =
+          new Set(
+            current.map(
+              (file) =>
+                `${file.name}-${file.size}-${file.lastModified}`
+            )
+          );
+
+        const newFiles =
+          validFiles.filter(
+            (file) =>
+              !existingKeys.has(
+                `${file.name}-${file.size}-${file.lastModified}`
+              )
+          );
+
+        return [
+          ...current,
+          ...newFiles,
+        ];
+      }
+    );
+  }
+
+  function handleAttachmentDrop(
+    event:
+      React.DragEvent<HTMLDivElement>
+  ) {
+    event.preventDefault();
+
+    setIsDraggingAttachment(
+      false
+    );
+
+    addPendingFiles(
+      Array.from(
+        event.dataTransfer.files
+      )
+    );
+  }
+
+  function removePendingFile(
+    index: number
+  ) {
+    setPendingAttachmentFiles(
+      (current) =>
+        current.filter(
+          (_, fileIndex) =>
+            fileIndex !== index
+        )
+    );
+  }
+
+  function sanitizeFileName(
+    fileName: string
+  ) {
+    return fileName
+      .replace(
+        /[^a-zA-Z0-9._-]/g,
+        "_"
+      )
+      .slice(0, 120);
+  }
+
+  async function uploadPendingFiles(
+    cardId: number,
+    userId: string
+  ) {
+    if (
+      pendingAttachmentFiles.length ===
+      0
+    ) {
+      return;
+    }
+
+    setIsUploadingAttachments(
+      true
+    );
+
+    try {
+      for (
+        const file of
+        pendingAttachmentFiles
+      ) {
+        const safeName =
+          sanitizeFileName(
+            file.name
+          );
+
+        const filePath =
+          `${boardId}/${cardId}/${crypto.randomUUID()}-${safeName}`;
+
+        const {
+          error: uploadError,
+        } = await supabase.storage
+          .from(
+            "card-attachments"
+          )
+          .upload(
+            filePath,
+            file,
+            {
+              cacheControl:
+                "3600",
+              upsert: false,
+              contentType:
+                file.type ||
+                undefined,
+            }
+          );
+
+        if (uploadError) {
+          throw new Error(
+            `Could not upload ${file.name}: ${uploadError.message}`
+          );
+        }
+
+        const {
+          error:
+            attachmentError,
+        } = await supabase
+          .from(
+            "card_attachments"
+          )
+          .insert({
+            card_id: cardId,
+            board_id:
+              boardId,
+            user_id:
+              userId,
+            file_name:
+              file.name,
+            file_path:
+              filePath,
+            file_type:
+              file.type ||
+              null,
+            file_size:
+              file.size,
+          });
+
+        if (
+          attachmentError
+        ) {
+          await supabase.storage
+            .from(
+              "card-attachments"
+            )
+            .remove([
+              filePath,
+            ]);
+
+          throw new Error(
+            `Could not save ${file.name}: ${attachmentError.message}`
+          );
+        }
+      }
+
+      setPendingAttachmentFiles(
+        []
+      );
+
+      await loadCardAttachments(
+        cardId
+      );
+    } finally {
+      setIsUploadingAttachments(
+        false
+      );
+    }
+  }
+
+  async function openAttachment(
+    attachment:
+      CardAttachment
+  ) {
+    const {
+      data,
+      error,
+    } =
+      await supabase.storage
+        .from(
+          "card-attachments"
+        )
+        .createSignedUrl(
+          attachment.file_path,
+          60
+        );
+
+    if (
+      error ||
+      !data?.signedUrl
+    ) {
+      alert(
+        `Could not open file: ${
+          error?.message ||
+          "Unknown error"
+        }`
+      );
+
+      return;
+    }
+
+    window.open(
+      data.signedUrl,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
+  async function deleteAttachment(
+    attachment:
+      CardAttachment
+  ) {
+    if (
+      attachment.user_id !==
+      currentUserId
+    ) {
+      alert(
+        "You can only delete files that you uploaded."
+      );
+
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Delete ${attachment.file_name}?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const {
+      error: storageError,
+    } =
+      await supabase.storage
+        .from(
+          "card-attachments"
+        )
+        .remove([
+          attachment.file_path,
+        ]);
+
+    if (storageError) {
+      alert(
+        `Could not delete file: ${storageError.message}`
+      );
+
+      return;
+    }
+
+    const {
+      error: rowError,
+    } =
+      await supabase
+        .from(
+          "card_attachments"
+        )
+        .delete()
+        .eq(
+          "id",
+          attachment.id
+        )
+        .eq(
+          "user_id",
+          currentUserId
+        );
+
+    if (rowError) {
+      alert(
+        `The file was removed from storage, but its attachment record could not be deleted: ${rowError.message}`
+      );
+
+      return;
+    }
+
+    setModalAttachments(
+      (current) =>
+        current.filter(
+          (item) =>
+            item.id !==
+            attachment.id
+        )
+    );
+  }
+
+  // -----------------------------------
   // COMMENTS
   // -----------------------------------
 
@@ -1221,6 +1647,11 @@ export default function BoardClient({
           user.id
         );
 
+        await uploadPendingFiles(
+          editingCard.id,
+          user.id
+        );
+
         await loadCards();
 
         closeCardModal();
@@ -1276,6 +1707,11 @@ export default function BoardClient({
         user.id
       );
 
+      await uploadPendingFiles(
+        data.id,
+        user.id
+      );
+
       await loadCards();
 
       closeCardModal();
@@ -1303,6 +1739,25 @@ export default function BoardClient({
     const cardId =
       deleteCardTarget.id;
 
+    const {
+      data:
+        attachmentRows,
+    } = await supabase
+      .from(
+        "card_attachments"
+      )
+      .select(
+        "file_path"
+      )
+      .eq(
+        "card_id",
+        cardId
+      )
+      .eq(
+        "board_id",
+        boardId
+      );
+
     const { error } =
       await supabase
         .from("cards")
@@ -1319,6 +1774,43 @@ export default function BoardClient({
       );
 
       return;
+    }
+
+    const attachmentPaths =
+      (
+        attachmentRows ||
+        []
+      )
+        .map(
+          (item) =>
+            item.file_path
+        )
+        .filter(Boolean);
+
+    if (
+      attachmentPaths.length >
+      0
+    ) {
+      const {
+        error:
+          storageCleanupError,
+      } =
+        await supabase.storage
+          .from(
+            "card-attachments"
+          )
+          .remove(
+            attachmentPaths
+          );
+
+      if (
+        storageCleanupError
+      ) {
+        console.error(
+          "Attachment storage cleanup failed:",
+          storageCleanupError.message
+        );
+      }
     }
 
     setCards(
@@ -2452,6 +2944,225 @@ export default function BoardClient({
             )}
 
             <div className="mt-8 border-t border-slate-200 pt-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-slate-900">
+                    Attachments
+                  </h3>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Drag documents here or click to choose files.
+                    Maximum 20 MB per file.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    attachmentInputRef.current?.click()
+                  }
+                  className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+                >
+                  Choose files
+                </button>
+              </div>
+
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  addPendingFiles(
+                    Array.from(
+                      event.target.files ||
+                      []
+                    )
+                  );
+
+                  event.currentTarget.value =
+                    "";
+                }}
+              />
+
+              <div
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setIsDraggingAttachment(
+                    true
+                  );
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDraggingAttachment(
+                    true
+                  );
+                }}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+
+                  if (
+                    event.currentTarget ===
+                    event.target
+                  ) {
+                    setIsDraggingAttachment(
+                      false
+                    );
+                  }
+                }}
+                onDrop={
+                  handleAttachmentDrop
+                }
+                onClick={() =>
+                  attachmentInputRef.current?.click()
+                }
+                className={`mt-4 cursor-pointer rounded-2xl border-2 border-dashed p-6 text-center transition ${
+                  isDraggingAttachment
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100"
+                }`}
+              >
+                <div className="text-3xl">
+                  📎
+                </div>
+
+                <p className="mt-2 text-sm font-medium text-slate-700">
+                  Drop files here
+                </p>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  PDF, Word, Excel, images and other documents
+                </p>
+              </div>
+
+              {pendingAttachmentFiles.length >
+                0 && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Ready to upload
+                  </p>
+
+                  <div className="mt-2 flex flex-col gap-2">
+                    {pendingAttachmentFiles.map(
+                      (
+                        file,
+                        index
+                      ) => (
+                        <div
+                          key={`${file.name}-${file.size}-${file.lastModified}`}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-slate-800">
+                              📄{" "}
+                              {
+                                file.name
+                              }
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-500">
+                              {formatFileSize(
+                                file.size
+                              )}{" "}
+                              · uploads when
+                              you save the card
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={(
+                              event
+                            ) => {
+                              event.stopPropagation();
+
+                              removePendingFile(
+                                index
+                              );
+                            }}
+                            className="shrink-0 text-xs font-medium text-red-500 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {editingCard && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Attached files
+                  </p>
+
+                  <div className="mt-2 flex flex-col gap-2">
+                    {modalAttachments.map(
+                      (
+                        attachment
+                      ) => (
+                        <div
+                          key={
+                            attachment.id
+                          }
+                          className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openAttachment(
+                                attachment
+                              )
+                            }
+                            className="min-w-0 flex-1 text-left"
+                          >
+                            <p className="truncate text-sm font-medium text-blue-700 hover:underline">
+                              📎{" "}
+                              {
+                                attachment.file_name
+                              }
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-400">
+                              {formatFileSize(
+                                attachment.file_size
+                              ) ||
+                                "File"}
+                            </p>
+                          </button>
+
+                          {attachment.user_id ===
+                            currentUserId && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                deleteAttachment(
+                                  attachment
+                                )
+                              }
+                              className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      )
+                    )}
+
+                    {modalAttachments.length ===
+                      0 && (
+                      <div className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-400">
+                        No files attached
+                        yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 border-t border-slate-200 pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-slate-900">
@@ -2703,15 +3414,20 @@ export default function BoardClient({
               <button
                 type="button"
                 onClick={saveCard}
-                className="rounded-lg px-5 py-2 text-sm font-medium text-white transition hover:brightness-95"
+                disabled={
+                  isUploadingAttachments
+                }
+                className="rounded-lg px-5 py-2 text-sm font-medium text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
                 style={{
                   backgroundColor:
                     accentColor,
                 }}
               >
-                {editingCard
-                  ? "Save changes"
-                  : "Add card"}
+                {isUploadingAttachments
+                  ? "Uploading files..."
+                  : editingCard
+                    ? "Save changes"
+                    : "Add card"}
               </button>
             </div>
           </div>
