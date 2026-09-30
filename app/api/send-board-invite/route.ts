@@ -8,8 +8,7 @@ export async function POST(request: Request) {
     // EMAIL CONFIG
     // ---------------------------------
 
-    const apiKey =
-      process.env.RESEND_API_KEY?.trim();
+    const apiKey = process.env.RESEND_API_KEY?.trim();
 
     if (
       !apiKey ||
@@ -39,20 +38,17 @@ export async function POST(request: Request) {
     // VERIFY SIGNED-IN USER
     // ---------------------------------
 
-    const supabase =
-      await createClient();
+    const supabase = await createClient();
 
     const {
       data: { user },
       error: userError,
-    } =
-      await supabase.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (userError || !user) {
       return NextResponse.json(
         {
-          error:
-            "You must be signed in.",
+          error: "You must be signed in.",
         },
         {
           status: 401,
@@ -64,20 +60,14 @@ export async function POST(request: Request) {
     // READ REQUEST
     // ---------------------------------
 
-    const body =
-      await request.json();
+    const body = await request.json();
 
-    const inviteId =
-      Number(body.inviteId);
+    const inviteId = Number(body.inviteId);
 
-    if (
-      !inviteId ||
-      Number.isNaN(inviteId)
-    ) {
+    if (!inviteId || Number.isNaN(inviteId)) {
       return NextResponse.json(
         {
-          error:
-            "Missing or invalid invite ID.",
+          error: "Missing or invalid invite ID.",
         },
         {
           status: 400,
@@ -100,10 +90,7 @@ export async function POST(request: Request) {
       .eq("id", inviteId)
       .single();
 
-    if (
-      inviteError ||
-      !invite
-    ) {
+    if (inviteError || !invite) {
       return NextResponse.json(
         {
           error:
@@ -136,23 +123,14 @@ export async function POST(request: Request) {
       error: boardError,
     } = await supabase
       .from("boards")
-      .select(
-        "id, name, user_id"
-      )
-      .eq(
-        "id",
-        invite.board_id
-      )
+      .select("id, name, user_id")
+      .eq("id", invite.board_id)
       .single();
 
-    if (
-      boardError ||
-      !board
-    ) {
+    if (boardError || !board) {
       return NextResponse.json(
         {
-          error:
-            "Board not found.",
+          error: "Board not found.",
         },
         {
           status: 404,
@@ -164,10 +142,7 @@ export async function POST(request: Request) {
     // VERIFY OWNER
     // ---------------------------------
 
-    if (
-      board.user_id !==
-      user.id
-    ) {
+    if (board.user_id !== user.id) {
       return NextResponse.json(
         {
           error:
@@ -179,10 +154,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (
-      invite.invited_by !==
-      user.id
-    ) {
+    if (invite.invited_by !== user.id) {
       return NextResponse.json(
         {
           error:
@@ -198,18 +170,13 @@ export async function POST(request: Request) {
     // BUILD EMAIL
     // ---------------------------------
 
-    const inviteEmail =
-      invite.email
-        .trim()
-        .toLowerCase();
+    const inviteEmail = invite.email
+      .trim()
+      .toLowerCase();
 
-    const boardName =
-      board.name;
+    const boardName = board.name;
 
-    const origin =
-      new URL(
-        request.url
-      ).origin;
+    const origin = new URL(request.url).origin;
 
     const inviteUrl =
       `${origin}/protected/invites/${invite.id}`;
@@ -221,90 +188,88 @@ export async function POST(request: Request) {
     const {
       data,
       error,
-    } =
-      await resend.emails.send({
-        from:
-          "Boardly <onboarding@resend.dev>",
+    } = await resend.emails.send({
+      from:
+        "Boardly <noreply@urbanenglish.es>",
 
-        to: inviteEmail,
+      to: inviteEmail,
 
-        subject:
-          `You've been invited to ${boardName}`,
+      subject:
+        `You've been invited to ${boardName}`,
 
-        html: `
-          <div
+      html: `
+        <div
+          style="
+            font-family: Arial, sans-serif;
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 32px;
+            color: #0f172a;
+          "
+        >
+          <h1
             style="
-              font-family: Arial, sans-serif;
-              max-width: 560px;
-              margin: 0 auto;
-              padding: 32px;
-              color: #0f172a;
+              margin-bottom: 16px;
+              font-size: 28px;
             "
           >
-            <h1
-              style="
-                margin-bottom: 16px;
-                font-size: 28px;
-              "
-            >
-              Boardly
-            </h1>
+            Boardly
+          </h1>
 
-            <h2
-              style="
-                margin-bottom: 12px;
-                font-size: 22px;
-              "
-            >
-              You've been invited
-            </h2>
+          <h2
+            style="
+              margin-bottom: 12px;
+              font-size: 22px;
+            "
+          >
+            You've been invited
+          </h2>
 
-            <p
-              style="
-                color: #475569;
-                line-height: 1.6;
-              "
-            >
-              You've been invited to collaborate on
-              <strong>${escapeHtml(boardName)}</strong>.
-            </p>
+          <p
+            style="
+              color: #475569;
+              line-height: 1.6;
+            "
+          >
+            You've been invited to collaborate on
+            <strong>${escapeHtml(boardName)}</strong>.
+          </p>
 
-            <a
-              href="${inviteUrl}"
-              style="
-                display: inline-block;
-                margin-top: 20px;
-                padding: 12px 20px;
-                background: #2563eb;
-                color: #ffffff;
-                text-decoration: none;
-                border-radius: 8px;
-                font-weight: 600;
-              "
-            >
-              Accept invite
-            </a>
+          <a
+            href="${inviteUrl}"
+            style="
+              display: inline-block;
+              margin-top: 20px;
+              padding: 12px 20px;
+              background: #2563eb;
+              color: #ffffff;
+              text-decoration: none;
+              border-radius: 8px;
+              font-weight: 600;
+            "
+          >
+            Accept invite
+          </a>
 
-            <p
-              style="
-                margin-top: 24px;
-                color: #94a3b8;
-                font-size: 13px;
-                line-height: 1.5;
-              "
-            >
-              If you weren't expecting this invitation,
-              you can ignore this email.
-            </p>
-          </div>
-        `,
-      });
+          <p
+            style="
+              margin-top: 24px;
+              color: #94a3b8;
+              font-size: 13px;
+              line-height: 1.5;
+            "
+          >
+            If you weren't expecting this invitation,
+            you can ignore this email.
+          </p>
+        </div>
+      `,
+    });
 
     if (error) {
       return NextResponse.json(
         {
-          error:
-            error.message,
+          error: error.message,
         },
         {
           status: 400,
@@ -324,8 +289,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error:
-          "Unable to send invite.",
+        error: "Unable to send invite.",
       },
       {
         status: 500,
@@ -334,16 +298,11 @@ export async function POST(request: Request) {
   }
 }
 
-function escapeHtml(
-  value: string
-) {
+function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
+    .replaceAll("'", "&#039;");
 }
