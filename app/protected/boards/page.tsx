@@ -17,16 +17,57 @@ type Card = {
   user_id: string;
 };
 
-type BoardMembership = {
-  board_id: number;
-  role: string;
-};
-
 type BoardStats = {
   total: number;
   todo: number;
   inProgress: number;
   done: number;
+};
+
+type Wallpaper =
+  | "default"
+  | "ocean"
+  | "forest"
+  | "sunset"
+  | "midnight";
+
+type AccentColor =
+  | "blue"
+  | "purple"
+  | "green"
+  | "orange"
+  | "pink";
+
+type UserPreferences = {
+  wallpaper: Wallpaper;
+  accent_color: AccentColor;
+};
+
+const WALLPAPER_STYLES: Record<
+  Wallpaper,
+  string
+> = {
+  default:
+    "linear-gradient(135deg, #f8fafc, #e2e8f0)",
+  ocean:
+    "linear-gradient(135deg, #0ea5e9, #1e3a8a)",
+  forest:
+    "linear-gradient(135deg, #15803d, #052e16)",
+  sunset:
+    "linear-gradient(135deg, #fb7185, #f97316, #7c3aed)",
+  midnight:
+    "linear-gradient(135deg, #0f172a, #312e81)",
+};
+
+const ACCENT_COLORS: Record<
+  AccentColor,
+  string
+> = {
+  blue: "#2563eb",
+  purple: "#7c3aed",
+  green: "#16a34a",
+  orange: "#ea580c",
+  pink: "#db2777",
 };
 
 export default function BoardsPage() {
@@ -37,10 +78,12 @@ export default function BoardsPage() {
     useState<Board[]>([]);
 
   const [boardStats, setBoardStats] =
-    useState<Record<number, BoardStats>>({});
+    useState<
+      Record<number, BoardStats>
+    >({});
 
-  const [boardRoles, setBoardRoles] =
-    useState<Record<number, string>>({});
+  const [currentUserId, setCurrentUserId] =
+    useState<string | null>(null);
 
   const [userEmail, setUserEmail] =
     useState("");
@@ -53,25 +96,33 @@ export default function BoardsPage() {
     setIsCreateModalOpen,
   ] = useState(false);
 
-  const [
-    newBoardName,
-    setNewBoardName,
-  ] = useState("");
+  const [newBoardName, setNewBoardName] =
+    useState("");
 
-  const [
-    renameTarget,
-    setRenameTarget,
-  ] = useState<Board | null>(null);
+  const [renameTarget, setRenameTarget] =
+    useState<Board | null>(null);
 
-  const [
-    renameValue,
-    setRenameValue,
-  ] = useState("");
+  const [renameValue, setRenameValue] =
+    useState("");
 
-  const [
-    deleteTarget,
-    setDeleteTarget,
-  ] = useState<Board | null>(null);
+  const [deleteTarget, setDeleteTarget] =
+    useState<Board | null>(null);
+
+  const [preferences, setPreferences] =
+    useState<UserPreferences>({
+      wallpaper: "default",
+      accent_color: "blue",
+    });
+
+  const wallpaperBackground =
+    WALLPAPER_STYLES[
+      preferences.wallpaper
+    ];
+
+  const accentColor =
+    ACCENT_COLORS[
+      preferences.accent_color
+    ];
 
   useEffect(() => {
     initializeDashboard();
@@ -88,13 +139,13 @@ export default function BoardsPage() {
       return;
     }
 
-    setUserEmail(
-      user.email || ""
-    );
+    setCurrentUserId(user.id);
+    setUserEmail(user.email || "");
 
-    await loadBoardsAndStats(
-      user.id
-    );
+    await Promise.all([
+      loadBoardsAndStats(),
+      loadPreferences(user.id),
+    ]);
 
     setLoading(false);
   }
@@ -112,66 +163,56 @@ export default function BoardsPage() {
     return user;
   }
 
-  async function loadBoardsAndStats(
+  async function loadPreferences(
     userId: string
   ) {
-    // First load the boards this user
-    // belongs to through board_members.
-    const {
-      data: membershipData,
-      error: membershipError,
-    } = await supabase
-      .from("board_members")
-      .select("board_id, role")
-      .eq("user_id", userId);
+    const { data, error } =
+      await supabase
+        .from("user_preferences")
+        .select(
+          "wallpaper, accent_color"
+        )
+        .eq("user_id", userId)
+        .maybeSingle();
 
-    if (membershipError) {
-      alert(
-        `Error loading memberships: ${membershipError.message}`
+    if (error) {
+      console.error(
+        "Error loading preferences:",
+        error
       );
+
       return;
     }
 
-    const memberships =
-      (membershipData ||
-        []) as BoardMembership[];
+    if (!data) return;
 
-    const boardIds =
-      memberships.map(
-        (membership) =>
-          membership.board_id
-      );
+    setPreferences({
+      wallpaper:
+        (data.wallpaper as Wallpaper) ||
+        "default",
 
-    const roles: Record<
-      number,
-      string
-    > = {};
+      accent_color:
+        (data.accent_color as AccentColor) ||
+        "blue",
+    });
+  }
 
-    memberships.forEach(
-      (membership) => {
-        roles[
-          membership.board_id
-        ] = membership.role;
-      }
-    );
+  async function loadBoardsAndStats() {
+    /*
+      The RLS policies decide which
+      boards the signed-in user can see.
 
-    setBoardRoles(roles);
+      This allows this page to include
+      both owned boards and boards that
+      have been shared with the user.
+    */
 
-    if (boardIds.length === 0) {
-      setBoards([]);
-      setBoardStats({});
-      return;
-    }
-
-    // Load all boards the current
-    // user is a member of.
     const {
       data: boardsData,
       error: boardsError,
     } = await supabase
       .from("boards")
       .select("*")
-      .in("id", boardIds)
       .order("created_at", {
         ascending: false,
       });
@@ -180,10 +221,24 @@ export default function BoardsPage() {
       alert(
         `Error loading boards: ${boardsError.message}`
       );
+
       return;
     }
 
-    // Load cards from all of those boards.
+    const availableBoards =
+      (boardsData || []) as Board[];
+
+    if (availableBoards.length === 0) {
+      setBoards([]);
+      setBoardStats({});
+      return;
+    }
+
+    const boardIds =
+      availableBoards.map(
+        (board) => board.id
+      );
+
     const {
       data: cardsData,
       error: cardsError,
@@ -198,6 +253,7 @@ export default function BoardsPage() {
       alert(
         `Error loading card totals: ${cardsError.message}`
       );
+
       return;
     }
 
@@ -206,7 +262,7 @@ export default function BoardsPage() {
       BoardStats
     > = {};
 
-    (boardsData || []).forEach(
+    availableBoards.forEach(
       (board) => {
         stats[board.id] = {
           total: 0,
@@ -226,16 +282,12 @@ export default function BoardsPage() {
           return;
         }
 
-        stats[
-          card.board_id
-        ].total += 1;
+        stats[card.board_id].total +=
+          1;
 
-        if (
-          card.status === "todo"
-        ) {
-          stats[
-            card.board_id
-          ].todo += 1;
+        if (card.status === "todo") {
+          stats[card.board_id].todo +=
+            1;
         }
 
         if (
@@ -247,20 +299,14 @@ export default function BoardsPage() {
           ].inProgress += 1;
         }
 
-        if (
-          card.status === "done"
-        ) {
-          stats[
-            card.board_id
-          ].done += 1;
+        if (card.status === "done") {
+          stats[card.board_id].done +=
+            1;
         }
       }
     );
 
-    setBoards(
-      boardsData || []
-    );
-
+    setBoards(availableBoards);
     setBoardStats(stats);
   }
 
@@ -304,32 +350,31 @@ export default function BoardsPage() {
       alert(
         `Error creating board: ${boardError.message}`
       );
+
       return;
     }
 
-    const {
-      error: memberError,
-    } = await supabase
-      .from("board_members")
-      .insert({
-        board_id: board.id,
-        user_id: user.id,
-        role: "owner",
-      });
+    const { error: memberError } =
+      await supabase
+        .from("board_members")
+        .insert({
+          board_id: board.id,
+          user_id: user.id,
+          role: "owner",
+          email: user.email ?? null,
+        });
 
     if (memberError) {
       await supabase
         .from("boards")
         .delete()
         .eq("id", board.id)
-        .eq(
-          "user_id",
-          user.id
-        );
+        .eq("user_id", user.id);
 
       alert(
         `Error creating owner membership: ${memberError.message}`
       );
+
       return;
     }
 
@@ -340,16 +385,10 @@ export default function BoardsPage() {
       ]
     );
 
-    setBoardRoles(
-      (currentRoles) => ({
-        ...currentRoles,
-        [board.id]: "owner",
-      })
-    );
-
     setBoardStats(
       (currentStats) => ({
         ...currentStats,
+
         [board.id]: {
           total: 0,
           todo: 0,
@@ -366,16 +405,14 @@ export default function BoardsPage() {
     board: Board
   ) {
     if (
-      boardRoles[board.id] !==
-      "owner"
+      board.user_id !==
+      currentUserId
     ) {
       return;
     }
 
     setRenameTarget(board);
-    setRenameValue(
-      board.name
-    );
+    setRenameValue(board.name);
   }
 
   function closeRenameModal() {
@@ -384,16 +421,7 @@ export default function BoardsPage() {
   }
 
   async function saveRename() {
-    if (!renameTarget)
-      return;
-
-    if (
-      boardRoles[
-        renameTarget.id
-      ] !== "owner"
-    ) {
-      return;
-    }
+    if (!renameTarget) return;
 
     const trimmedName =
       renameValue.trim();
@@ -408,25 +436,32 @@ export default function BoardsPage() {
       return;
     }
 
+    if (
+      renameTarget.user_id !==
+      user.id
+    ) {
+      alert(
+        "Only the board owner can rename this board."
+      );
+
+      closeRenameModal();
+      return;
+    }
+
     const { error } =
       await supabase
         .from("boards")
         .update({
           name: trimmedName,
         })
-        .eq(
-          "id",
-          renameTarget.id
-        )
-        .eq(
-          "user_id",
-          user.id
-        );
+        .eq("id", renameTarget.id)
+        .eq("user_id", user.id);
 
     if (error) {
       alert(
         `Error renaming board: ${error.message}`
       );
+
       return;
     }
 
@@ -448,16 +483,7 @@ export default function BoardsPage() {
   }
 
   async function confirmDeleteBoard() {
-    if (!deleteTarget)
-      return;
-
-    if (
-      boardRoles[
-        deleteTarget.id
-      ] !== "owner"
-    ) {
-      return;
-    }
+    if (!deleteTarget) return;
 
     const user =
       await getCurrentUser();
@@ -467,118 +493,41 @@ export default function BoardsPage() {
       return;
     }
 
-    const {
-      data: boardCards,
-      error: cardLookupError,
-    } = await supabase
-      .from("cards")
-      .select("id")
-      .eq(
-        "board_id",
-        deleteTarget.id
-      )
-      .eq(
-        "user_id",
-        user.id
+    if (
+      deleteTarget.user_id !==
+      user.id
+    ) {
+      alert(
+        "Only the board owner can delete this board."
       );
 
-    if (cardLookupError) {
-      alert(
-        `Error finding board cards: ${cardLookupError.message}`
-      );
+      setDeleteTarget(null);
       return;
     }
 
-    const cardIds =
-      (boardCards || []).map(
-        (card) => card.id
-      );
+    /*
+      Your database relationships use
+      cascading deletes for the board
+      membership and card child data.
 
-    if (cardIds.length > 0) {
-      const {
-        error: checklistError,
-      } = await supabase
-        .from(
-          "checklist_items"
-        )
+      We only delete the board itself.
+    */
+
+    const { error: boardError } =
+      await supabase
+        .from("boards")
         .delete()
         .eq(
-          "user_id",
-          user.id
+          "id",
+          deleteTarget.id
         )
-        .in(
-          "card_id",
-          cardIds
-        );
-
-      if (checklistError) {
-        alert(
-          `Error deleting checklist items: ${checklistError.message}`
-        );
-        return;
-      }
-
-      const {
-        error: commentsError,
-      } = await supabase
-        .from("comments")
-        .delete()
-        .eq(
-          "user_id",
-          user.id
-        )
-        .in(
-          "card_id",
-          cardIds
-        );
-
-      if (commentsError) {
-        alert(
-          `Error deleting comments: ${commentsError.message}`
-        );
-        return;
-      }
-    }
-
-    const {
-      error: cardsError,
-    } = await supabase
-      .from("cards")
-      .delete()
-      .eq(
-        "board_id",
-        deleteTarget.id
-      )
-      .eq(
-        "user_id",
-        user.id
-      );
-
-    if (cardsError) {
-      alert(
-        `Error deleting board cards: ${cardsError.message}`
-      );
-      return;
-    }
-
-    const {
-      error: boardError,
-    } = await supabase
-      .from("boards")
-      .delete()
-      .eq(
-        "id",
-        deleteTarget.id
-      )
-      .eq(
-        "user_id",
-        user.id
-      );
+        .eq("user_id", user.id);
 
     if (boardError) {
       alert(
         `Error deleting board: ${boardError.message}`
       );
+
       return;
     }
 
@@ -605,20 +554,6 @@ export default function BoardsPage() {
       }
     );
 
-    setBoardRoles(
-      (currentRoles) => {
-        const updatedRoles = {
-          ...currentRoles,
-        };
-
-        delete updatedRoles[
-          deleteTarget.id
-        ];
-
-        return updatedRoles;
-      }
-    );
-
     setDeleteTarget(null);
   }
 
@@ -638,40 +573,41 @@ export default function BoardsPage() {
       alert(
         `Error logging out: ${error.message}`
       );
+
       return;
     }
 
-    router.push(
-      "/auth/login"
-    );
+    router.push("/auth/login");
     router.refresh();
   }
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-100">
-        <div className="border-b border-slate-200 bg-white">
+      <main
+        className="min-h-screen"
+        style={{
+          background:
+            wallpaperBackground,
+          backgroundAttachment:
+            "fixed",
+        }}
+      >
+        <div className="border-b border-white/30 bg-white/90 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
-            <div className="text-lg font-bold text-slate-900">
-              Boardly
-            </div>
+            <div className="h-6 w-24 animate-pulse rounded bg-slate-200" />
 
-            <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-200" />
+            <div className="h-9 w-24 animate-pulse rounded bg-slate-200" />
           </div>
         </div>
 
         <div className="mx-auto max-w-7xl p-8">
-          <div className="animate-pulse">
-            <div className="h-8 w-48 rounded bg-slate-300" />
+          <div className="animate-pulse rounded-3xl bg-white/70 p-8 shadow-sm backdrop-blur">
+            <div className="h-8 w-48 rounded bg-slate-200" />
 
-            <div className="mt-3 h-4 w-64 rounded bg-slate-200" />
-
-            <div className="mt-8 h-11 w-36 rounded-lg bg-slate-300" />
-
-            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="h-48 rounded-2xl bg-slate-200" />
-              <div className="h-48 rounded-2xl bg-slate-200" />
-              <div className="h-48 rounded-2xl bg-slate-200" />
+            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="h-52 rounded-2xl bg-white/80" />
+              <div className="h-52 rounded-2xl bg-white/80" />
+              <div className="h-52 rounded-2xl bg-white/80" />
             </div>
           </div>
         </div>
@@ -681,10 +617,21 @@ export default function BoardsPage() {
 
   return (
     <>
-      <main className="min-h-screen bg-slate-100">
-        <div className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
+      <main
+        className="min-h-screen"
+        style={{
+          background:
+            wallpaperBackground,
+          backgroundAttachment:
+            "fixed",
+        }}
+      >
+        {/* TOP NAVIGATION */}
+
+        <div className="border-b border-white/30 bg-white/90 shadow-sm backdrop-blur">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 sm:px-8">
             <button
+              type="button"
               onClick={() =>
                 router.push(
                   "/protected/boards"
@@ -695,8 +642,8 @@ export default function BoardsPage() {
               Boardly
             </button>
 
-            <div className="flex items-center gap-4">
-              <div className="hidden text-right sm:block">
+            <div className="flex items-center gap-3">
+              <div className="hidden text-right md:block">
                 <p className="text-xs text-slate-400">
                   Signed in as
                 </p>
@@ -707,6 +654,19 @@ export default function BoardsPage() {
               </div>
 
               <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    "/protected/settings/preferences"
+                  )
+                }
+                className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+              >
+                Preferences
+              </button>
+
+              <button
+                type="button"
                 onClick={logout}
                 className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
               >
@@ -716,201 +676,224 @@ export default function BoardsPage() {
           </div>
         </div>
 
-        <div className="mx-auto max-w-7xl p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                Your boards
-              </h1>
+        {/* PAGE CONTENT */}
 
-              <p className="mt-2 text-sm text-slate-500">
-                Boards you own and
-                boards shared with you.
-              </p>
-            </div>
+        <div className="mx-auto max-w-7xl p-6 sm:p-8">
+          <div className="rounded-3xl border border-white/40 bg-white/75 p-6 shadow-xl backdrop-blur-md sm:p-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                  Your boards
+                </h1>
 
-            <button
-              onClick={
-                openCreateModal
-              }
-              className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
-            >
-              + Create Board
-            </button>
-          </div>
-
-          {boards.length ===
-          0 ? (
-            <div className="mt-10 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-2xl text-blue-600">
-                +
+                <p className="mt-2 text-sm text-slate-600">
+                  Create boards and
+                  collaborate on boards
+                  shared with you.
+                </p>
               </div>
 
-              <h2 className="mt-4 text-lg font-semibold text-slate-900">
-                No boards yet
-              </h2>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-                Create a board or
-                accept an invitation
-                to a shared board.
-              </p>
-
               <button
+                type="button"
                 onClick={
                   openCreateModal
                 }
-                className="mt-5 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+                className="rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+                style={{
+                  backgroundColor:
+                    accentColor,
+                }}
               >
-                Create your first board
+                + Create Board
               </button>
             </div>
-          ) : (
-            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {boards.map(
-                (board) => {
-                  const stats =
-                    boardStats[
-                      board.id
-                    ] || {
-                      total: 0,
-                      todo: 0,
-                      inProgress: 0,
-                      done: 0,
-                    };
 
-                  const role =
-                    boardRoles[
-                      board.id
-                    ];
+            {/* NO BOARDS */}
 
-                  const isOwner =
-                    role ===
-                    "owner";
+            {boards.length === 0 ? (
+              <div className="mt-10 rounded-2xl border border-dashed border-slate-300 bg-white/80 p-10 text-center shadow-sm backdrop-blur">
+                <div
+                  className="mx-auto flex h-12 w-12 items-center justify-center rounded-full text-2xl text-white"
+                  style={{
+                    backgroundColor:
+                      accentColor,
+                  }}
+                >
+                  +
+                </div>
 
-                  return (
-                    <div
-                      key={
+                <h2 className="mt-4 text-lg font-semibold text-slate-900">
+                  No boards yet
+                </h2>
+
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+                  Create your first
+                  board and start
+                  organizing tasks.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={
+                    openCreateModal
+                  }
+                  className="mt-5 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+                  style={{
+                    backgroundColor:
+                      accentColor,
+                  }}
+                >
+                  Create your first
+                  board
+                </button>
+              </div>
+            ) : (
+              <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {boards.map(
+                  (board) => {
+                    const stats =
+                      boardStats[
                         board.id
-                      }
-                      className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                    >
-                      <button
-                        onClick={() =>
-                          openBoard(
-                            board.id
-                          )
-                        }
-                        className="w-full p-6 text-left"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-xs font-medium uppercase tracking-wide text-blue-600">
-                                Board
-                              </p>
+                      ] || {
+                        total: 0,
+                        todo: 0,
+                        inProgress: 0,
+                        done: 0,
+                      };
 
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                  isOwner
-                                    ? "bg-blue-50 text-blue-700"
-                                    : "bg-green-50 text-green-700"
-                                }`}
-                              >
-                                {isOwner
-                                  ? "Owner"
-                                  : "Shared"}
-                              </span>
+                    const isOwner =
+                      board.user_id ===
+                      currentUserId;
+
+                    return (
+                      <div
+                        key={board.id}
+                        className="group overflow-hidden rounded-2xl border border-white/60 bg-white/90 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl"
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openBoard(
+                              board.id
+                            )
+                          }
+                          className="w-full p-6 text-left"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p
+                                  className="text-xs font-semibold uppercase tracking-wide"
+                                  style={{
+                                    color:
+                                      accentColor,
+                                  }}
+                                >
+                                  Board
+                                </p>
+
+                                {isOwner ? (
+                                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+                                    Owner
+                                  </span>
+                                ) : (
+                                  <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+                                    Shared
+                                  </span>
+                                )}
+                              </div>
+
+                              <h2 className="mt-2 text-xl font-bold text-slate-900">
+                                {
+                                  board.name
+                                }
+                              </h2>
                             </div>
 
-                            <h2 className="mt-2 text-xl font-bold text-slate-900">
-                              {
-                                board.name
-                              }
-                            </h2>
+                            <span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-600">
+                              →
+                            </span>
                           </div>
 
-                          <span className="text-lg text-slate-300 transition group-hover:text-slate-500">
-                            →
-                          </span>
-                        </div>
-
-                        <p className="mt-4 text-sm font-medium text-slate-700">
-                          {
-                            stats.total
-                          }{" "}
-                          {stats.total ===
-                          1
-                            ? "card"
-                            : "cards"}
-                        </p>
-
-                        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                          <p className="mt-5 text-sm font-medium text-slate-700">
                             {
-                              stats.todo
+                              stats.total
                             }{" "}
-                            To Do
-                          </span>
-
-                          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">
-                            {
-                              stats.inProgress
-                            }{" "}
-                            In Progress
-                          </span>
-
-                          <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-700">
-                            {
-                              stats.done
-                            }{" "}
-                            Done
-                          </span>
-                        </div>
-                      </button>
-
-                      {isOwner && (
-                        <div className="flex items-center gap-2 border-t border-slate-100 px-6 py-4">
-                          <button
-                            onClick={() =>
-                              openRenameModal(
-                                board
-                              )
-                            }
-                            className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-                          >
-                            Rename
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              setDeleteTarget(
-                                board
-                              )
-                            }
-                            className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-
-                      {!isOwner && (
-                        <div className="border-t border-slate-100 px-6 py-4">
-                          <p className="text-sm text-slate-500">
-                            Shared with
-                            you
+                            {stats.total ===
+                            1
+                              ? "card"
+                              : "cards"}
                           </p>
+
+                          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                              {
+                                stats.todo
+                              }{" "}
+                              To Do
+                            </span>
+
+                            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">
+                              {
+                                stats.inProgress
+                              }{" "}
+                              In Progress
+                            </span>
+
+                            <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-700">
+                              {
+                                stats.done
+                              }{" "}
+                              Done
+                            </span>
+                          </div>
+                        </button>
+
+                        <div className="border-t border-slate-100 px-6 py-4">
+                          {isOwner ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openRenameModal(
+                                    board
+                                  )
+                                }
+                                className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+                              >
+                                Rename
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDeleteTarget(
+                                    board
+                                  )
+                                }
+                                className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="text-xs font-medium text-slate-400">
+                              Shared with
+                              you
+                            </p>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                }
-              )}
-            </div>
-          )}
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </main>
+
+      {/* CREATE BOARD MODAL */}
 
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -921,6 +904,7 @@ export default function BoardsPage() {
               </h2>
 
               <button
+                type="button"
                 onClick={
                   closeCreateModal
                 }
@@ -936,20 +920,13 @@ export default function BoardsPage() {
 
             <input
               autoFocus
-              value={
-                newBoardName
-              }
-              onChange={(
-                event
-              ) =>
+              value={newBoardName}
+              onChange={(event) =>
                 setNewBoardName(
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
-              onKeyDown={(
-                event
-              ) => {
+              onKeyDown={(event) => {
                 if (
                   event.key ===
                   "Enter"
@@ -958,11 +935,12 @@ export default function BoardsPage() {
                 }
               }}
               placeholder="e.g. Website Project"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
             />
 
             <div className="mt-6 flex justify-end gap-3">
               <button
+                type="button"
                 onClick={
                   closeCreateModal
                 }
@@ -972,10 +950,13 @@ export default function BoardsPage() {
               </button>
 
               <button
-                onClick={
-                  createBoard
-                }
-                className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                type="button"
+                onClick={createBoard}
+                className="rounded-lg px-5 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                style={{
+                  backgroundColor:
+                    accentColor,
+                }}
               >
                 Create board
               </button>
@@ -983,6 +964,8 @@ export default function BoardsPage() {
           </div>
         </div>
       )}
+
+      {/* RENAME BOARD MODAL */}
 
       {renameTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -993,6 +976,7 @@ export default function BoardsPage() {
               </h2>
 
               <button
+                type="button"
                 onClick={
                   closeRenameModal
                 }
@@ -1008,20 +992,13 @@ export default function BoardsPage() {
 
             <input
               autoFocus
-              value={
-                renameValue
-              }
-              onChange={(
-                event
-              ) =>
+              value={renameValue}
+              onChange={(event) =>
                 setRenameValue(
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
-              onKeyDown={(
-                event
-              ) => {
+              onKeyDown={(event) => {
                 if (
                   event.key ===
                   "Enter"
@@ -1029,11 +1006,12 @@ export default function BoardsPage() {
                   saveRename();
                 }
               }}
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
             />
 
             <div className="mt-6 flex justify-end gap-3">
               <button
+                type="button"
                 onClick={
                   closeRenameModal
                 }
@@ -1043,10 +1021,13 @@ export default function BoardsPage() {
               </button>
 
               <button
-                onClick={
-                  saveRename
-                }
-                className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                type="button"
+                onClick={saveRename}
+                className="rounded-lg px-5 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                style={{
+                  backgroundColor:
+                    accentColor,
+                }}
               >
                 Save changes
               </button>
@@ -1054,6 +1035,8 @@ export default function BoardsPage() {
           </div>
         </div>
       )}
+
+      {/* DELETE BOARD MODAL */}
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -1065,13 +1048,13 @@ export default function BoardsPage() {
             <p className="mt-3 text-sm leading-6 text-slate-600">
               This will permanently
               delete “
-              {deleteTarget.name}”
-              and everything inside
-              it.
+              {deleteTarget.name}” and
+              everything inside it.
             </p>
 
             <div className="mt-6 flex justify-end gap-3">
               <button
+                type="button"
                 onClick={() =>
                   setDeleteTarget(
                     null
@@ -1083,6 +1066,7 @@ export default function BoardsPage() {
               </button>
 
               <button
+                type="button"
                 onClick={
                   confirmDeleteBoard
                 }
