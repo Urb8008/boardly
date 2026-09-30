@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -307,7 +307,7 @@ export default function PreferencesPage() {
             }
             className="mb-4 text-sm font-medium text-slate-500 transition hover:text-slate-900"
           >
-            ← Back
+            â† Back
           </button>
 
           <h1 className="text-3xl font-bold text-slate-900">
@@ -315,7 +315,7 @@ export default function PreferencesPage() {
           </h1>
 
           <p className="mt-2 text-slate-500">
-            Personalise how Boardly looks
+            Personalise how ToutchBase looks
             and feels.
           </p>
         </div>

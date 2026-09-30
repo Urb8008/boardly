@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -48,7 +48,7 @@ export function LoginForm({
       return null;
     }
 
-    // Only allow internal Boardly paths.
+    // Only allow internal ToutchBase paths.
     // This prevents redirecting users
     // to an outside website.
     if (

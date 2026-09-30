@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
       error,
     } = await resend.emails.send({
       from:
-        "Boardly <noreply@urbanenglish.es>",
+        "ToutchBase <noreply@urbanenglish.es>",
 
       to: inviteEmail,
 
@@ -213,7 +213,7 @@ export async function POST(request: Request) {
               font-size: 28px;
             "
           >
-            Boardly
+            ToutchBase
           </h1>
 
           <h2

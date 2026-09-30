@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Boardly",
+  title: "ToutchBase",
   description: "My Trello-style project management app",
 };
 

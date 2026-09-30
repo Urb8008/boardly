@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -36,7 +36,7 @@ export default function SignupPage() {
         </h1>
 
         <p className="mt-2 text-slate-600">
-          Sign up for Boardly
+          Sign up for ToutchBase
         </p>
 
         <input

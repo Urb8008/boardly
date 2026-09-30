@@ -383,17 +383,20 @@ export default function BoardClient({
         .from("boards")
         .select("*")
         .eq("id", boardId)
-        .single();
+        .maybeSingle();
 
     if (error) {
-      alert(
-        `Error loading board: ${error.message}`
+      console.error(
+        "Error loading board:",
+        error.message
       );
 
       return;
     }
 
-    setBoard(data);
+    if (data) {
+      setBoard(data);
+    }
   }
 
   // -----------------------------------
@@ -696,7 +699,7 @@ export default function BoardClient({
                 invite.id,
               boardName:
                 board?.name ||
-                "Boardly board",
+                "ToutchBase board",
             }),
           }
         );
@@ -1878,10 +1881,12 @@ export default function BoardClient({
       <main
         className="min-h-screen"
         style={{
-          background:
+          backgroundImage:
             wallpaperBackground,
-          backgroundAttachment:
-            "fixed",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
         }}
       >
         <div className="border-b border-white/30 bg-white/90 backdrop-blur">
@@ -1895,7 +1900,7 @@ export default function BoardClient({
               }
               className="font-bold text-slate-900"
             >
-              Boardly
+              ToutchBase
             </button>
 
             <div className="flex items-center gap-2">

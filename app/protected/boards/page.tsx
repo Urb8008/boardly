@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -561,7 +561,7 @@ export default function BoardsPage() {
               }
               className="text-lg font-bold text-slate-900"
             >
-              Boardly
+              ToutchBase
             </button>
 
             <div className="flex items-center gap-3">
@@ -721,7 +721,7 @@ export default function BoardsPage() {
                           </div>
 
                           <span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-600">
-                            →
+                            â†’
                           </span>
                         </div>
 
@@ -807,7 +807,7 @@ export default function BoardsPage() {
                 onClick={closeCreateModal}
                 className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -874,7 +874,7 @@ export default function BoardsPage() {
                 onClick={closeRenameModal}
                 className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -935,8 +935,8 @@ export default function BoardsPage() {
             </h2>
 
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              This will permanently delete “
-              {deleteTarget.name}” and
+              This will permanently delete â€œ
+              {deleteTarget.name}â€ and
               everything inside it.
             </p>
 
