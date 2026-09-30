@@ -2,16 +2,41 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 
-const resend = new Resend(
-  process.env.RESEND_API_KEY
-);
-
-export async function POST(
-  request: Request
-) {
+export async function POST(request: Request) {
   try {
     // ---------------------------------
-    // 1. VERIFY SIGNED-IN USER
+    // EMAIL CONFIG
+    // ---------------------------------
+
+    const apiKey =
+      process.env.RESEND_API_KEY?.trim();
+
+    if (
+      !apiKey ||
+      !apiKey.startsWith("re_") ||
+      /\s/.test(apiKey)
+    ) {
+      console.error(
+        "RESEND_API_KEY is missing or incorrectly formatted."
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Email service is not configured correctly.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    // Create Resend only when this API
+    // route is actually called.
+    const resend = new Resend(apiKey);
+
+    // ---------------------------------
+    // VERIFY SIGNED-IN USER
     // ---------------------------------
 
     const supabase =
@@ -36,7 +61,7 @@ export async function POST(
     }
 
     // ---------------------------------
-    // 2. READ REQUEST
+    // READ REQUEST
     // ---------------------------------
 
     const body =
@@ -61,7 +86,7 @@ export async function POST(
     }
 
     // ---------------------------------
-    // 3. LOAD INVITE FROM DATABASE
+    // LOAD INVITE
     // ---------------------------------
 
     const {
@@ -90,10 +115,6 @@ export async function POST(
       );
     }
 
-    // ---------------------------------
-    // 4. INVITE MUST STILL BE PENDING
-    // ---------------------------------
-
     if (invite.accepted) {
       return NextResponse.json(
         {
@@ -107,7 +128,7 @@ export async function POST(
     }
 
     // ---------------------------------
-    // 5. LOAD BOARD
+    // LOAD BOARD
     // ---------------------------------
 
     const {
@@ -140,7 +161,7 @@ export async function POST(
     }
 
     // ---------------------------------
-    // 6. VERIFY CALLER OWNS BOARD
+    // VERIFY OWNER
     // ---------------------------------
 
     if (
@@ -158,10 +179,6 @@ export async function POST(
       );
     }
 
-    // ---------------------------------
-    // 7. VERIFY INVITE CREATOR
-    // ---------------------------------
-
     if (
       invite.invited_by !==
       user.id
@@ -177,14 +194,9 @@ export async function POST(
       );
     }
 
-    /*
-      IMPORTANT:
-      We do NOT trust email or boardName
-      supplied by the browser.
-
-      Both values come directly from
-      Supabase instead.
-    */
+    // ---------------------------------
+    // BUILD EMAIL
+    // ---------------------------------
 
     const inviteEmail =
       invite.email
@@ -193,10 +205,6 @@ export async function POST(
 
     const boardName =
       board.name;
-
-    // ---------------------------------
-    // 8. BUILD INVITE URL
-    // ---------------------------------
 
     const origin =
       new URL(
@@ -207,7 +215,7 @@ export async function POST(
       `${origin}/protected/invites/${invite.id}`;
 
     // ---------------------------------
-    // 9. SEND EMAIL
+    // SEND EMAIL
     // ---------------------------------
 
     const {
