@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Wallpaper =
@@ -126,6 +127,7 @@ const tabColors: {
 ];
 
 export default function PreferencesPage() {
+  const router = useRouter();
   const supabase = createClient();
 
   const [wallpaper, setWallpaper] =
@@ -163,7 +165,9 @@ export default function PreferencesPage() {
       setMessage(
         "Unable to load your account."
       );
+
       setLoading(false);
+
       return;
     }
 
@@ -182,7 +186,9 @@ export default function PreferencesPage() {
       setMessage(
         "Unable to load preferences."
       );
+
       setLoading(false);
+
       return;
     }
 
@@ -216,27 +222,30 @@ export default function PreferencesPage() {
       setMessage(
         "Unable to find your account."
       );
+
       setSaving(false);
+
       return;
     }
 
-    const {
-      error,
-    } = await supabase
-      .from("user_preferences")
-      .upsert(
-        {
-          user_id: user.id,
-          wallpaper,
-          accent_color: accentColor,
-          tab_color: tabColor,
-          updated_at:
-            new Date().toISOString(),
-        },
-        {
-          onConflict: "user_id",
-        }
-      );
+    const { error } =
+      await supabase
+        .from("user_preferences")
+        .upsert(
+          {
+            user_id: user.id,
+            wallpaper,
+            accent_color:
+              accentColor,
+            tab_color:
+              tabColor,
+            updated_at:
+              new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id",
+          }
+        );
 
     if (error) {
       console.error(error);
@@ -246,6 +255,7 @@ export default function PreferencesPage() {
       );
 
       setSaving(false);
+
       return;
     }
 
@@ -290,6 +300,16 @@ export default function PreferencesPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl px-6 py-10">
         <div className="mb-8">
+          <button
+            type="button"
+            onClick={() =>
+              router.back()
+            }
+            className="mb-4 text-sm font-medium text-slate-500 transition hover:text-slate-900"
+          >
+            ← Back
+          </button>
+
           <h1 className="text-3xl font-bold text-slate-900">
             Preferences
           </h1>
@@ -513,7 +533,7 @@ export default function PreferencesPage() {
 
           {/* SAVE */}
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               {message && (
                 <p className="text-sm font-medium text-slate-600">
@@ -522,16 +542,30 @@ export default function PreferencesPage() {
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={savePreferences}
-              disabled={saving}
-              className="rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving
-                ? "Saving..."
-                : "Save preferences"}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  router.back()
+                }
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Back
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  savePreferences
+                }
+                disabled={saving}
+                className="rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving
+                  ? "Saving..."
+                  : "Save preferences"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
