@@ -1920,6 +1920,30 @@ export default function BoardClient({
                 type="button"
                 onClick={() =>
                   router.push(
+                    `/protected/boards/${boardId}/calendar`
+                  )
+                }
+                className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+              >
+                Calendar
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    `/protected/boards/${boardId}/messenger`
+                  )
+                }
+                className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+              >
+                Messenger
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
                     "/protected/boards"
                   )
                 }

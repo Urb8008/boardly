@@ -1,0 +1,1413 @@
+
+"use client";
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import { useRouter } from "next/navigation";
+
+import { createClient } from "@/lib/supabase/client";
+
+type Board = {
+  id: number;
+  name: string;
+  user_id: string;
+};
+
+type Card = {
+  id: number;
+  title: string;
+  due_date: string | null;
+  status: string;
+  board_id: number;
+};
+
+type CalendarEvent = {
+  id: number;
+  board_id: number;
+  user_id: string;
+  title: string;
+  description: string | null;
+  start_at: string;
+  end_at: string | null;
+  all_day: boolean;
+  created_at: string;
+};
+
+type CalendarItem = {
+  id: string;
+  type: "card" | "event";
+  title: string;
+  date: string;
+  description?: string | null;
+  status?: string;
+  eventId?: number;
+};
+
+function getDateKey(
+  year: number,
+  month: number,
+  day: number
+) {
+  const monthText = String(
+    month + 1
+  ).padStart(2, "0");
+
+  const dayText = String(
+    day
+  ).padStart(2, "0");
+
+  return `${year}-${monthText}-${dayText}`;
+}
+
+function formatMonthTitle(
+  date: Date
+) {
+  return date.toLocaleDateString(
+    undefined,
+    {
+      month: "long",
+      year: "numeric",
+    }
+  );
+}
+
+function formatEventDate(
+  date: string
+) {
+  return new Date(
+    `${date}T00:00:00`
+  ).toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export default function CalendarClient({
+  boardId,
+}: {
+  boardId: number;
+}) {
+  const router = useRouter();
+
+  const supabase =
+    createClient();
+
+  const [board, setBoard] =
+    useState<Board | null>(null);
+
+  const [cards, setCards] =
+    useState<Card[]>([]);
+
+  const [
+    calendarEvents,
+    setCalendarEvents,
+  ] = useState<CalendarEvent[]>([]);
+
+  const [
+    currentUserId,
+    setCurrentUserId,
+  ] = useState<string | null>(
+    null
+  );
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [
+    currentMonth,
+    setCurrentMonth,
+  ] = useState(() => {
+    const today = new Date();
+
+    return new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      1
+    );
+  });
+
+  const [
+    selectedDate,
+    setSelectedDate,
+  ] = useState<string | null>(
+    null
+  );
+
+  const [
+    isEventModalOpen,
+    setIsEventModalOpen,
+  ] = useState(false);
+
+  const [
+    eventTitle,
+    setEventTitle,
+  ] = useState("");
+
+  const [
+    eventDescription,
+    setEventDescription,
+  ] = useState("");
+
+  const [
+    eventDate,
+    setEventDate,
+  ] = useState("");
+
+  const [
+    editingEvent,
+    setEditingEvent,
+  ] =
+    useState<CalendarEvent | null>(
+      null
+    );
+
+  const [
+    deleteTarget,
+    setDeleteTarget,
+  ] =
+    useState<CalendarEvent | null>(
+      null
+    );
+
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
+
+  useEffect(() => {
+    initializeCalendar();
+  }, []);
+
+  async function initializeCalendar() {
+    setLoading(true);
+    setErrorMessage("");
+
+    const {
+      data: { user },
+      error: userError,
+    } =
+      await supabase.auth.getUser();
+
+    if (
+      userError ||
+      !user
+    ) {
+      router.push(
+        "/auth/login"
+      );
+
+      return;
+    }
+
+    setCurrentUserId(
+      user.id
+    );
+
+    await Promise.all([
+      loadBoard(),
+      loadCards(),
+      loadCalendarEvents(),
+    ]);
+
+    setLoading(false);
+  }
+
+  async function loadBoard() {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("boards")
+      .select(
+        "id, name, user_id"
+      )
+      .eq("id", boardId)
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Error loading board:",
+        error.message
+      );
+
+      return;
+    }
+
+    if (data) {
+      setBoard(data);
+    }
+  }
+
+  async function loadCards() {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("cards")
+      .select(
+        "id, title, due_date, status, board_id"
+      )
+      .eq(
+        "board_id",
+        boardId
+      )
+      .not(
+        "due_date",
+        "is",
+        null
+      )
+      .order(
+        "due_date",
+        {
+          ascending: true,
+        }
+      );
+
+    if (error) {
+      console.error(
+        "Error loading cards:",
+        error.message
+      );
+
+      return;
+    }
+
+    setCards(
+      data || []
+    );
+  }
+
+  async function loadCalendarEvents() {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from(
+        "calendar_events"
+      )
+      .select("*")
+      .eq(
+        "board_id",
+        boardId
+      )
+      .order(
+        "start_at",
+        {
+          ascending: true,
+        }
+      );
+
+    if (error) {
+      console.error(
+        "Error loading calendar events:",
+        error.message
+      );
+
+      return;
+    }
+
+    setCalendarEvents(
+      data || []
+    );
+  }
+
+  const calendarItems =
+    useMemo(() => {
+      const cardItems:
+        CalendarItem[] =
+        cards
+          .filter(
+            (card) =>
+              Boolean(
+                card.due_date
+              )
+          )
+          .map(
+            (card) => ({
+              id:
+                `card-${card.id}`,
+              type: "card",
+              title:
+                card.title,
+              date:
+                card.due_date as string,
+              status:
+                card.status,
+            })
+          );
+
+      const eventItems:
+        CalendarItem[] =
+        calendarEvents.map(
+          (event) => {
+            const start =
+              new Date(
+                event.start_at
+              );
+
+            const date =
+              getDateKey(
+                start.getFullYear(),
+                start.getMonth(),
+                start.getDate()
+              );
+
+            return {
+              id:
+                `event-${event.id}`,
+              type:
+                "event",
+              title:
+                event.title,
+              date,
+              description:
+                event.description,
+              eventId:
+                event.id,
+            };
+          }
+        );
+
+      return [
+        ...cardItems,
+        ...eventItems,
+      ];
+    }, [
+      cards,
+      calendarEvents,
+    ]);
+
+  const calendarDays =
+    useMemo(() => {
+      const year =
+        currentMonth.getFullYear();
+
+      const month =
+        currentMonth.getMonth();
+
+      const firstDay =
+        new Date(
+          year,
+          month,
+          1
+        );
+
+      const lastDay =
+        new Date(
+          year,
+          month + 1,
+          0
+        );
+
+      const startOffset =
+        firstDay.getDay();
+
+      const days: {
+        date: Date;
+        dateKey: string;
+        isCurrentMonth: boolean;
+      }[] = [];
+
+      for (
+        let index =
+          startOffset - 1;
+        index >= 0;
+        index--
+      ) {
+        const date =
+          new Date(
+            year,
+            month,
+            -index
+          );
+
+        days.push({
+          date,
+          dateKey:
+            getDateKey(
+              date.getFullYear(),
+              date.getMonth(),
+              date.getDate()
+            ),
+          isCurrentMonth:
+            false,
+        });
+      }
+
+      for (
+        let day = 1;
+        day <=
+        lastDay.getDate();
+        day++
+      ) {
+        const date =
+          new Date(
+            year,
+            month,
+            day
+          );
+
+        days.push({
+          date,
+          dateKey:
+            getDateKey(
+              year,
+              month,
+              day
+            ),
+          isCurrentMonth:
+            true,
+        });
+      }
+
+      let nextDay = 1;
+
+      while (
+        days.length % 7 !==
+        0
+      ) {
+        const date =
+          new Date(
+            year,
+            month + 1,
+            nextDay
+          );
+
+        days.push({
+          date,
+          dateKey:
+            getDateKey(
+              date.getFullYear(),
+              date.getMonth(),
+              date.getDate()
+            ),
+          isCurrentMonth:
+            false,
+        });
+
+        nextDay++;
+      }
+
+      while (
+        days.length < 42
+      ) {
+        const date =
+          new Date(
+            year,
+            month + 1,
+            nextDay
+          );
+
+        days.push({
+          date,
+          dateKey:
+            getDateKey(
+              date.getFullYear(),
+              date.getMonth(),
+              date.getDate()
+            ),
+          isCurrentMonth:
+            false,
+        });
+
+        nextDay++;
+      }
+
+      return days;
+    }, [currentMonth]);
+
+  function getItemsForDate(
+    dateKey: string
+  ) {
+    return calendarItems.filter(
+      (item) =>
+        item.date ===
+        dateKey
+    );
+  }
+
+  function previousMonth() {
+    setCurrentMonth(
+      (current) =>
+        new Date(
+          current.getFullYear(),
+          current.getMonth() -
+            1,
+          1
+        )
+    );
+  }
+
+  function nextMonth() {
+    setCurrentMonth(
+      (current) =>
+        new Date(
+          current.getFullYear(),
+          current.getMonth() +
+            1,
+          1
+        )
+    );
+  }
+
+  function goToToday() {
+    const today =
+      new Date();
+
+    setCurrentMonth(
+      new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        1
+      )
+    );
+
+    setSelectedDate(
+      getDateKey(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      )
+    );
+  }
+
+  function openAddEvent(
+    date?: string
+  ) {
+    setEditingEvent(
+      null
+    );
+
+    setEventTitle("");
+    setEventDescription("");
+
+    setEventDate(
+      date ||
+        selectedDate ||
+        getDateKey(
+          new Date().getFullYear(),
+          new Date().getMonth(),
+          new Date().getDate()
+        )
+    );
+
+    setErrorMessage("");
+
+    setIsEventModalOpen(
+      true
+    );
+  }
+
+  function openEditEvent(
+    eventId: number
+  ) {
+    const event =
+      calendarEvents.find(
+        (item) =>
+          item.id ===
+          eventId
+      );
+
+    if (!event) return;
+
+    const start =
+      new Date(
+        event.start_at
+      );
+
+    setEditingEvent(
+      event
+    );
+
+    setEventTitle(
+      event.title
+    );
+
+    setEventDescription(
+      event.description ||
+        ""
+    );
+
+    setEventDate(
+      getDateKey(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate()
+      )
+    );
+
+    setErrorMessage("");
+
+    setIsEventModalOpen(
+      true
+    );
+  }
+
+  function closeEventModal() {
+    if (saving) return;
+
+    setIsEventModalOpen(
+      false
+    );
+
+    setEditingEvent(
+      null
+    );
+
+    setEventTitle("");
+    setEventDescription("");
+    setEventDate("");
+    setErrorMessage("");
+  }
+
+  async function saveEvent() {
+    const title =
+      eventTitle.trim();
+
+    const description =
+      eventDescription.trim();
+
+    if (!title) {
+      setErrorMessage(
+        "Enter an event title."
+      );
+
+      return;
+    }
+
+    if (!eventDate) {
+      setErrorMessage(
+        "Choose a date."
+      );
+
+      return;
+    }
+
+    const {
+      data: { user },
+    } =
+      await supabase.auth.getUser();
+
+    if (!user) {
+      router.push(
+        "/auth/login"
+      );
+
+      return;
+    }
+
+    setSaving(true);
+    setErrorMessage("");
+
+    const startAt =
+      new Date(
+        `${eventDate}T12:00:00`
+      ).toISOString();
+
+    if (editingEvent) {
+      const {
+        error,
+      } =
+        await supabase
+          .from(
+            "calendar_events"
+          )
+          .update({
+            title,
+            description:
+              description ||
+              null,
+            start_at:
+              startAt,
+            all_day: true,
+            updated_at:
+              new Date().toISOString(),
+          })
+          .eq(
+            "id",
+            editingEvent.id
+          )
+          .eq(
+            "board_id",
+            boardId
+          );
+
+      if (error) {
+        setErrorMessage(
+          error.message
+        );
+
+        setSaving(false);
+        return;
+      }
+    } else {
+      const {
+        error,
+      } =
+        await supabase
+          .from(
+            "calendar_events"
+          )
+          .insert({
+            board_id:
+              boardId,
+            user_id:
+              user.id,
+            title,
+            description:
+              description ||
+              null,
+            start_at:
+              startAt,
+            end_at: null,
+            all_day: true,
+          });
+
+      if (error) {
+        setErrorMessage(
+          error.message
+        );
+
+        setSaving(false);
+        return;
+      }
+    }
+
+    await loadCalendarEvents();
+
+    setSaving(false);
+
+    closeEventModal();
+  }
+
+  async function deleteEvent() {
+    if (
+      !deleteTarget
+    ) {
+      return;
+    }
+
+    const { error } =
+      await supabase
+        .from(
+          "calendar_events"
+        )
+        .delete()
+        .eq(
+          "id",
+          deleteTarget.id
+        )
+        .eq(
+          "board_id",
+          boardId
+        );
+
+    if (error) {
+      alert(
+        `Error deleting event: ${error.message}`
+      );
+
+      return;
+    }
+
+    setDeleteTarget(
+      null
+    );
+
+    await loadCalendarEvents();
+  }
+
+  const selectedItems =
+    selectedDate
+      ? getItemsForDate(
+          selectedDate
+        )
+      : [];
+
+  const today =
+    new Date();
+
+  const todayKey =
+    getDateKey(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-slate-100 p-8">
+        <div className="mx-auto max-w-7xl animate-pulse">
+          <div className="h-10 w-64 rounded bg-slate-300" />
+
+          <div className="mt-8 h-[650px] rounded-3xl bg-slate-200" />
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-100">
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <button
+            type="button"
+            onClick={() =>
+              router.push(
+                "/protected/boards"
+              )
+            }
+            className="font-bold text-slate-900"
+          >
+            ToutchBase
+          </button>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  `/protected/boards/${boardId}`
+                )
+              }
+              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+            >
+              Board
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  "/protected/boards"
+                )
+              }
+              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+            >
+              All boards
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  `/protected/boards/${boardId}`
+                )
+              }
+              className="text-sm font-medium text-slate-500 hover:text-slate-900"
+            >
+              ← Back to board
+            </button>
+
+            <h1 className="mt-4 text-3xl font-bold text-slate-900">
+              Calendar
+            </h1>
+
+            <p className="mt-2 text-sm text-slate-500">
+              {board?.name ||
+                "Board"}{" "}
+              · Card due dates
+              and events
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              openAddEvent()
+            }
+            className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+          >
+            + Add event
+          </button>
+        </div>
+
+        <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_320px]">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={
+                    previousMonth
+                  }
+                  className="rounded-lg bg-slate-100 px-3 py-2 text-slate-700 hover:bg-slate-200"
+                >
+                  ←
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    nextMonth
+                  }
+                  className="rounded-lg bg-slate-100 px-3 py-2 text-slate-700 hover:bg-slate-200"
+                >
+                  →
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    goToToday
+                  }
+                  className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+                >
+                  Today
+                </button>
+              </div>
+
+              <h2 className="text-xl font-bold text-slate-900">
+                {formatMonthTitle(
+                  currentMonth
+                )}
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+              {[
+                "Sun",
+                "Mon",
+                "Tue",
+                "Wed",
+                "Thu",
+                "Fri",
+                "Sat",
+              ].map(
+                (day) => (
+                  <div
+                    key={day}
+                    className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500"
+                  >
+                    {day}
+                  </div>
+                )
+              )}
+            </div>
+
+            <div className="grid grid-cols-7">
+              {calendarDays.map(
+                (
+                  day,
+                  index
+                ) => {
+                  const items =
+                    getItemsForDate(
+                      day.dateKey
+                    );
+
+                  const isToday =
+                    day.dateKey ===
+                    todayKey;
+
+                  const isSelected =
+                    day.dateKey ===
+                    selectedDate;
+
+                  return (
+                    <button
+                      type="button"
+                      key={`${day.dateKey}-${index}`}
+                      onClick={() =>
+                        setSelectedDate(
+                          day.dateKey
+                        )
+                      }
+                      onDoubleClick={() =>
+                        openAddEvent(
+                          day.dateKey
+                        )
+                      }
+                      className={`min-h-32 border-b border-r border-slate-200 p-2 text-left transition ${
+                        day.isCurrentMonth
+                          ? "bg-white"
+                          : "bg-slate-50"
+                      } ${
+                        isSelected
+                          ? "ring-2 ring-inset ring-blue-500"
+                          : "hover:bg-blue-50/40"
+                      }`}
+                    >
+                      <div className="flex justify-end">
+                        <span
+                          className={`flex h-7 w-7 items-center justify-center rounded-full text-sm ${
+                            isToday
+                              ? "bg-blue-600 font-bold text-white"
+                              : day.isCurrentMonth
+                                ? "text-slate-700"
+                                : "text-slate-400"
+                          }`}
+                        >
+                          {day.date.getDate()}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 space-y-1">
+                        {items
+                          .slice(
+                            0,
+                            3
+                          )
+                          .map(
+                            (
+                              item
+                            ) => (
+                              <div
+                                key={
+                                  item.id
+                                }
+                                className={`truncate rounded-md px-2 py-1 text-xs font-medium ${
+                                  item.type ===
+                                  "card"
+                                    ? "bg-blue-50 text-blue-700"
+                                    : "bg-violet-50 text-violet-700"
+                                }`}
+                              >
+                                {item.type ===
+                                "card"
+                                  ? "✓ "
+                                  : "● "}
+                                {
+                                  item.title
+                                }
+                              </div>
+                            )
+                          )}
+
+                        {items.length >
+                          3 && (
+                          <div className="px-1 text-xs font-medium text-slate-500">
+                            +
+                            {items.length -
+                              3}{" "}
+                            more
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                }
+              )}
+            </div>
+          </div>
+
+          <aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-slate-900">
+                {selectedDate
+                  ? formatEventDate(
+                      selectedDate
+                    )
+                  : "Select a day"}
+              </h2>
+
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openAddEvent(
+                      selectedDate
+                    )
+                  }
+                  className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  + Event
+                </button>
+              )}
+            </div>
+
+            {!selectedDate ? (
+              <p className="mt-5 text-sm leading-6 text-slate-500">
+                Click a date to see
+                its cards and
+                events.
+              </p>
+            ) : selectedItems.length ===
+              0 ? (
+              <div className="mt-5 rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-400">
+                Nothing scheduled
+                for this day.
+              </div>
+            ) : (
+              <div className="mt-5 flex flex-col gap-3">
+                {selectedItems.map(
+                  (item) => (
+                    <div
+                      key={
+                        item.id
+                      }
+                      className="rounded-xl border border-slate-200 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                              item.type ===
+                              "card"
+                                ? "bg-blue-50 text-blue-700"
+                                : "bg-violet-50 text-violet-700"
+                            }`}
+                          >
+                            {item.type ===
+                            "card"
+                              ? "Card"
+                              : "Event"}
+                          </span>
+
+                          <p className="mt-2 font-medium text-slate-900">
+                            {
+                              item.title
+                            }
+                          </p>
+
+                          {item.description && (
+                            <p className="mt-2 text-sm leading-5 text-slate-500">
+                              {
+                                item.description
+                              }
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {item.type ===
+                        "event" &&
+                        item.eventId && (
+                          <div className="mt-4 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openEditEvent(
+                                  item.eventId as number
+                                )
+                              }
+                              className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const event =
+                                  calendarEvents.find(
+                                    (
+                                      value
+                                    ) =>
+                                      value.id ===
+                                      item.eventId
+                                  );
+
+                                if (
+                                  event
+                                ) {
+                                  setDeleteTarget(
+                                    event
+                                  );
+                                }
+                              }}
+                              className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="h-3 w-3 rounded bg-blue-100" />
+                Card due date
+              </div>
+
+              <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                <span className="h-3 w-3 rounded bg-violet-100" />
+                Calendar event
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      {isEventModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900">
+                {editingEvent
+                  ? "Edit event"
+                  : "Add event"}
+              </h2>
+
+              <button
+                type="button"
+                onClick={
+                  closeEventModal
+                }
+                disabled={saving}
+                className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <label className="mt-6 block text-sm font-medium text-slate-700">
+              Title
+            </label>
+
+            <input
+              autoFocus
+              value={
+                eventTitle
+              }
+              onChange={(
+                event
+              ) =>
+                setEventTitle(
+                  event.target.value
+                )
+              }
+              placeholder="Meeting, deadline, reminder..."
+              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+
+            <label className="mt-5 block text-sm font-medium text-slate-700">
+              Date
+            </label>
+
+            <input
+              type="date"
+              value={
+                eventDate
+              }
+              onChange={(
+                event
+              ) =>
+                setEventDate(
+                  event.target.value
+                )
+              }
+              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+
+            <label className="mt-5 block text-sm font-medium text-slate-700">
+              Description
+            </label>
+
+            <textarea
+              value={
+                eventDescription
+              }
+              onChange={(
+                event
+              ) =>
+                setEventDescription(
+                  event.target.value
+                )
+              }
+              rows={4}
+              placeholder="Optional notes..."
+              className="mt-2 w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+
+            {errorMessage && (
+              <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {errorMessage}
+              </p>
+            )}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={
+                  closeEventModal
+                }
+                disabled={saving}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  saveEvent
+                }
+                disabled={saving}
+                className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {saving
+                  ? "Saving..."
+                  : editingEvent
+                    ? "Save changes"
+                    : "Add event"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-slate-900">
+              Delete event?
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              This will permanently
+              delete “
+              {deleteTarget.title}
+              ”.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setDeleteTarget(
+                    null
+                  )
+                }
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  deleteEvent
+                }
+                className="rounded-lg bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
