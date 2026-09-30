@@ -72,6 +72,30 @@ type CardAttachment = {
   created_at: string;
 };
 
+type CardLink = {
+  id: number;
+  card_id: number;
+  board_id: number;
+  user_id: string;
+  label: string | null;
+  url: string;
+  created_at: string;
+};
+
+type BoardLink = {
+  id: number;
+  board_id: number;
+  user_id: string;
+  label: string | null;
+  url: string;
+  created_at: string;
+};
+
+type PendingCardLink = {
+  label: string;
+  url: string;
+};
+
 type Wallpaper =
   | "default"
   | "ocean"
@@ -176,6 +200,31 @@ export default function BoardClient({
   const [comments, setComments] =
     useState<Comment[]>([]);
 
+  const [
+    boardLinks,
+    setBoardLinks,
+  ] = useState<BoardLink[]>([]);
+
+  const [
+    boardLinkLabel,
+    setBoardLinkLabel,
+  ] = useState("");
+
+  const [
+    boardLinkUrl,
+    setBoardLinkUrl,
+  ] = useState("");
+
+  const [
+    boardLinkError,
+    setBoardLinkError,
+  ] = useState("");
+
+  const [
+    isAddingBoardLink,
+    setIsAddingBoardLink,
+  ] = useState(false);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -242,6 +291,31 @@ export default function BoardClient({
     modalAttachments,
     setModalAttachments,
   ] = useState<CardAttachment[]>([]);
+
+  const [
+    modalCardLinks,
+    setModalCardLinks,
+  ] = useState<CardLink[]>([]);
+
+  const [
+    pendingCardLinks,
+    setPendingCardLinks,
+  ] = useState<PendingCardLink[]>([]);
+
+  const [
+    cardLinkLabel,
+    setCardLinkLabel,
+  ] = useState("");
+
+  const [
+    cardLinkUrl,
+    setCardLinkUrl,
+  ] = useState("");
+
+  const [
+    cardLinkError,
+    setCardLinkError,
+  ] = useState("");
 
   const [
     pendingAttachmentFiles,
@@ -372,6 +446,7 @@ export default function BoardClient({
     await Promise.all([
       loadBoard(),
       loadCards(),
+      loadBoardLinks(),
       loadPreferences(user.id),
     ]);
 
@@ -769,6 +844,206 @@ export default function BoardClient({
   }
 
   // -----------------------------------
+  // BOARD LINKS
+  // -----------------------------------
+
+  function normalizeHttpUrl(
+    value: string
+  ) {
+    const trimmed =
+      value.trim();
+
+    if (!trimmed) {
+      return null;
+    }
+
+    const candidate =
+      /^https?:\/\//i.test(
+        trimmed
+      )
+        ? trimmed
+        : `https://${trimmed}`;
+
+    try {
+      const parsed =
+        new URL(candidate);
+
+      if (
+        parsed.protocol !==
+          "http:" &&
+        parsed.protocol !==
+          "https:"
+      ) {
+        return null;
+      }
+
+      return parsed.toString();
+    } catch {
+      return null;
+    }
+  }
+
+  function getLinkLabel(
+    label: string | null,
+    url: string
+  ) {
+    const trimmed =
+      label?.trim();
+
+    if (trimmed) {
+      return trimmed;
+    }
+
+    try {
+      return new URL(
+        url
+      ).hostname;
+    } catch {
+      return url;
+    }
+  }
+
+  async function loadBoardLinks() {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("board_links")
+      .select("*")
+      .eq(
+        "board_id",
+        boardId
+      )
+      .order(
+        "created_at",
+        {
+          ascending: true,
+        }
+      );
+
+    if (error) {
+      console.error(
+        "Error loading board links:",
+        error.message
+      );
+
+      return;
+    }
+
+    setBoardLinks(
+      data || []
+    );
+  }
+
+  async function addBoardLink() {
+    const url =
+      normalizeHttpUrl(
+        boardLinkUrl
+      );
+
+    if (!url) {
+      setBoardLinkError(
+        "Enter a valid web address."
+      );
+
+      return;
+    }
+
+    const user =
+      await getCurrentUser();
+
+    if (!user) {
+      return;
+    }
+
+    const {
+      error,
+    } = await supabase
+      .from("board_links")
+      .insert({
+        board_id:
+          boardId,
+        user_id:
+          user.id,
+        label:
+          boardLinkLabel.trim() ||
+          null,
+        url,
+      });
+
+    if (error) {
+      setBoardLinkError(
+        error.message
+      );
+
+      return;
+    }
+
+    setBoardLinkLabel("");
+    setBoardLinkUrl("");
+    setBoardLinkError("");
+    setIsAddingBoardLink(
+      false
+    );
+
+    await loadBoardLinks();
+  }
+
+  async function deleteBoardLink(
+    link: BoardLink
+  ) {
+    if (
+      link.user_id !==
+      currentUserId
+    ) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Delete ${getLinkLabel(
+          link.label,
+          link.url
+        )}?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const {
+      error,
+    } = await supabase
+      .from("board_links")
+      .delete()
+      .eq(
+        "id",
+        link.id
+      )
+      .eq(
+        "user_id",
+        currentUserId
+      );
+
+    if (error) {
+      alert(
+        `Error deleting link: ${error.message}`
+      );
+
+      return;
+    }
+
+    setBoardLinks(
+      (current) =>
+        current.filter(
+          (item) =>
+            item.id !==
+            link.id
+        )
+    );
+  }
+
+  // -----------------------------------
   // CARD MODAL
   // -----------------------------------
 
@@ -793,6 +1068,12 @@ export default function BoardClient({
     setModalAttachments([]);
     setPendingAttachmentFiles([]);
     setIsDraggingAttachment(false);
+
+    setModalCardLinks([]);
+    setPendingCardLinks([]);
+    setCardLinkLabel("");
+    setCardLinkUrl("");
+    setCardLinkError("");
 
     setIsCardModalOpen(true);
   }
@@ -874,7 +1155,14 @@ export default function BoardClient({
     setPendingAttachmentFiles([]);
     setIsDraggingAttachment(false);
 
+    setModalCardLinks([]);
+    setPendingCardLinks([]);
+    setCardLinkLabel("");
+    setCardLinkUrl("");
+    setCardLinkError("");
+
     loadCardAttachments(card.id);
+    loadCardLinks(card.id);
 
     setIsCardModalOpen(true);
   }
@@ -897,6 +1185,12 @@ export default function BoardClient({
     setModalAttachments([]);
     setPendingAttachmentFiles([]);
     setIsDraggingAttachment(false);
+
+    setModalCardLinks([]);
+    setPendingCardLinks([]);
+    setCardLinkLabel("");
+    setCardLinkUrl("");
+    setCardLinkError("");
   }
 
   // -----------------------------------
@@ -1477,6 +1771,193 @@ export default function BoardClient({
   }
 
   // -----------------------------------
+  // CARD LINKS
+  // -----------------------------------
+
+  async function loadCardLinks(
+    cardId: number
+  ) {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("card_links")
+      .select("*")
+      .eq(
+        "card_id",
+        cardId
+      )
+      .eq(
+        "board_id",
+        boardId
+      )
+      .order(
+        "created_at",
+        {
+          ascending: true,
+        }
+      );
+
+    if (error) {
+      console.error(
+        "Error loading card links:",
+        error.message
+      );
+
+      return;
+    }
+
+    setModalCardLinks(
+      data || []
+    );
+  }
+
+  function addPendingCardLink() {
+    const url =
+      normalizeHttpUrl(
+        cardLinkUrl
+      );
+
+    if (!url) {
+      setCardLinkError(
+        "Enter a valid web address."
+      );
+
+      return;
+    }
+
+    setPendingCardLinks(
+      (current) => [
+        ...current,
+        {
+          label:
+            cardLinkLabel.trim(),
+          url,
+        },
+      ]
+    );
+
+    setCardLinkLabel("");
+    setCardLinkUrl("");
+    setCardLinkError("");
+  }
+
+  function removePendingCardLink(
+    index: number
+  ) {
+    setPendingCardLinks(
+      (current) =>
+        current.filter(
+          (_, linkIndex) =>
+            linkIndex !== index
+        )
+    );
+  }
+
+  async function savePendingCardLinks(
+    cardId: number,
+    userId: string
+  ) {
+    if (
+      pendingCardLinks.length ===
+      0
+    ) {
+      return;
+    }
+
+    const rows =
+      pendingCardLinks.map(
+        (link) => ({
+          card_id:
+            cardId,
+          board_id:
+            boardId,
+          user_id:
+            userId,
+          label:
+            link.label ||
+            null,
+          url:
+            link.url,
+        })
+      );
+
+    const {
+      error,
+    } = await supabase
+      .from("card_links")
+      .insert(rows);
+
+    if (error) {
+      throw new Error(
+        `Could not save link: ${error.message}`
+      );
+    }
+
+    setPendingCardLinks(
+      []
+    );
+
+    await loadCardLinks(
+      cardId
+    );
+  }
+
+  async function deleteCardLink(
+    link: CardLink
+  ) {
+    if (
+      link.user_id !==
+      currentUserId
+    ) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Delete ${getLinkLabel(
+          link.label,
+          link.url
+        )}?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const {
+      error,
+    } = await supabase
+      .from("card_links")
+      .delete()
+      .eq(
+        "id",
+        link.id
+      )
+      .eq(
+        "user_id",
+        currentUserId
+      );
+
+    if (error) {
+      alert(
+        `Error deleting link: ${error.message}`
+      );
+
+      return;
+    }
+
+    setModalCardLinks(
+      (current) =>
+        current.filter(
+          (item) =>
+            item.id !==
+            link.id
+        )
+    );
+  }
+
+  // -----------------------------------
   // COMMENTS
   // -----------------------------------
 
@@ -1652,6 +2133,11 @@ export default function BoardClient({
           user.id
         );
 
+        await savePendingCardLinks(
+          editingCard.id,
+          user.id
+        );
+
         await loadCards();
 
         closeCardModal();
@@ -1708,6 +2194,11 @@ export default function BoardClient({
       );
 
       await uploadPendingFiles(
+        data.id,
+        user.id
+      );
+
+      await savePendingCardLinks(
         data.id,
         user.id
       );
@@ -2516,6 +3007,162 @@ export default function BoardClient({
               )}
             </div>
 
+            <div className="mt-6 rounded-2xl border border-white/50 bg-white/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold text-slate-900">
+                    Board links
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Quick links shared with this board.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingBoardLink(
+                      (current) =>
+                        !current
+                    );
+
+                    setBoardLinkError(
+                      ""
+                    );
+                  }}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                >
+                  + Add link
+                </button>
+              </div>
+
+              {isAddingBoardLink && (
+                <div className="mt-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-[1fr_2fr_auto]">
+                  <input
+                    value={
+                      boardLinkLabel
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setBoardLinkLabel(
+                        event.target.value
+                      )
+                    }
+                    placeholder="Label (optional)"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+
+                  <input
+                    value={
+                      boardLinkUrl
+                    }
+                    onChange={(
+                      event
+                    ) => {
+                      setBoardLinkUrl(
+                        event.target.value
+                      );
+
+                      setBoardLinkError(
+                        ""
+                      );
+                    }}
+                    onKeyDown={(
+                      event
+                    ) => {
+                      if (
+                        event.key ===
+                        "Enter"
+                      ) {
+                        event.preventDefault();
+                        addBoardLink();
+                      }
+                    }}
+                    placeholder="https://example.com"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={
+                      addBoardLink
+                    }
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-white hover:brightness-95"
+                    style={{
+                      backgroundColor:
+                        accentColor,
+                    }}
+                  >
+                    Add
+                  </button>
+
+                  {boardLinkError && (
+                    <p className="text-sm text-red-600 md:col-span-3">
+                      {
+                        boardLinkError
+                      }
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {boardLinks.map(
+                  (link) => (
+                    <div
+                      key={
+                        link.id
+                      }
+                      className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm"
+                    >
+                      <a
+                        href={
+                          link.url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="max-w-64 truncate text-sm font-medium text-blue-700 hover:underline"
+                        title={
+                          link.url
+                        }
+                      >
+                        🔗{" "}
+                        {getLinkLabel(
+                          link.label,
+                          link.url
+                        )}
+                      </a>
+
+                      {link.user_id ===
+                        currentUserId && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            deleteBoardLink(
+                              link
+                            )
+                          }
+                          className="text-xs font-medium text-red-500 hover:text-red-700"
+                          title="Delete link"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  )
+                )}
+
+                {boardLinks.length ===
+                  0 && (
+                  <p className="text-sm text-slate-400">
+                    No board links yet.
+                  </p>
+                )}
+              </div>
+            </div>
+
             <div className="mt-8 flex gap-6 overflow-x-auto pb-8">
               <BoardColumn
                 title="To Do"
@@ -3155,6 +3802,195 @@ export default function BoardClient({
                       <div className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-400">
                         No files attached
                         yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 border-t border-slate-200 pt-6">
+              <div>
+                <h3 className="font-semibold text-slate-900">
+                  Links
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Add a website, Google Doc, Drive folder, meeting link or any web page.
+                </p>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
+                <input
+                  value={
+                    cardLinkLabel
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setCardLinkLabel(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Label (optional)"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+
+                <input
+                  value={
+                    cardLinkUrl
+                  }
+                  onChange={(
+                    event
+                  ) => {
+                    setCardLinkUrl(
+                      event.target.value
+                    );
+
+                    setCardLinkError(
+                      ""
+                    );
+                  }}
+                  onKeyDown={(
+                    event
+                  ) => {
+                    if (
+                      event.key ===
+                        "Enter" &&
+                      cardLinkUrl.trim()
+                    ) {
+                      event.preventDefault();
+                      addPendingCardLink();
+                    }
+                  }}
+                  placeholder="https://example.com"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+
+                <button
+                  type="button"
+                  onClick={
+                    addPendingCardLink
+                  }
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                >
+                  Add link
+                </button>
+              </div>
+
+              {cardLinkError && (
+                <p className="mt-2 text-sm text-red-600">
+                  {
+                    cardLinkError
+                  }
+                </p>
+              )}
+
+              {pendingCardLinks.length >
+                0 && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Ready to save
+                  </p>
+
+                  <div className="mt-2 flex flex-col gap-2">
+                    {pendingCardLinks.map(
+                      (
+                        link,
+                        index
+                      ) => (
+                        <div
+                          key={`${link.url}-${index}`}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3"
+                        >
+                          <a
+                            href={
+                              link.url
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="min-w-0 flex-1 truncate text-sm font-medium text-blue-700 hover:underline"
+                          >
+                            🔗{" "}
+                            {getLinkLabel(
+                              link.label,
+                              link.url
+                            )}
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removePendingCardLink(
+                                index
+                              )
+                            }
+                            className="shrink-0 text-xs font-medium text-red-500 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {editingCard && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Saved links
+                  </p>
+
+                  <div className="mt-2 flex flex-col gap-2">
+                    {modalCardLinks.map(
+                      (link) => (
+                        <div
+                          key={
+                            link.id
+                          }
+                          className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3"
+                        >
+                          <a
+                            href={
+                              link.url
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="min-w-0 flex-1 truncate text-sm font-medium text-blue-700 hover:underline"
+                            title={
+                              link.url
+                            }
+                          >
+                            🔗{" "}
+                            {getLinkLabel(
+                              link.label,
+                              link.url
+                            )}
+                          </a>
+
+                          {link.user_id ===
+                            currentUserId && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                deleteCardLink(
+                                  link
+                                )
+                              }
+                              className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      )
+                    )}
+
+                    {modalCardLinks.length ===
+                      0 && (
+                      <div className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-400">
+                        No saved links yet.
                       </div>
                     )}
                   </div>
