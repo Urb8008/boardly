@@ -136,7 +136,7 @@ export function SignUpForm({
           </CardTitle>
 
           <CardDescription>
-            Create a new ToutchBase account
+            Create a new TouchBase account
           </CardDescription>
         </CardHeader>
 

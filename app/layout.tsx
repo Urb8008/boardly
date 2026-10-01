@@ -2,7 +2,7 @@
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ToutchBase",
+  title: "TouchBase",
   description: "My Trello-style project management app",
 };
 

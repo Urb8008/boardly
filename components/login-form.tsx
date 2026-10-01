@@ -48,7 +48,7 @@ export function LoginForm({
       return null;
     }
 
-    // Only allow internal ToutchBase paths.
+    // Only allow internal TouchBase paths.
     // This prevents redirecting users
     // to an outside website.
     if (

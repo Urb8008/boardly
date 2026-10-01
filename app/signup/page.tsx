@@ -36,7 +36,7 @@ export default function SignupPage() {
         </h1>
 
         <p className="mt-2 text-slate-600">
-          Sign up for ToutchBase
+          Sign up for TouchBase
         </p>
 
         <input

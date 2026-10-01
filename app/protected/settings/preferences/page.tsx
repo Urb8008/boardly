@@ -435,7 +435,7 @@ export default function PreferencesPage() {
           </h1>
 
           <p className="mt-2 text-slate-500">
-            Personalise how ToutchBase looks
+            Personalise how TouchBase looks
             and feels.
           </p>
         </div>

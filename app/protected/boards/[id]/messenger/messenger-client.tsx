@@ -790,7 +790,7 @@ export default function MessengerClient({
   }
 
   function makeRoomName() {
-    return `toutchbase-${boardId}-${crypto.randomUUID()}`;
+    return `TouchBase-${boardId}-${crypto.randomUUID()}`;
   }
 
   async function startVideoCall() {
@@ -1097,7 +1097,7 @@ export default function MessengerClient({
             }
             className="font-bold text-slate-900"
           >
-            ToutchBase
+            TouchBase
           </button>
 
           <div className="flex items-center gap-2">

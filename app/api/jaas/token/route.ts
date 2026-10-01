@@ -83,7 +83,7 @@ const privateKey = await importPKCS8(
       (typeof user.user_metadata?.name === "string" &&
         user.user_metadata.name.trim()) ||
       user.email?.split("@")[0] ||
-      "ToutchBase user";
+      "TouchBase user";
 
     const token = await new SignJWT({
       aud: "jitsi",

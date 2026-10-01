@@ -135,7 +135,7 @@ export default function InviteClient({
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-slate-900">
-              ToutchBase
+              TouchBase
             </h1>
             <p className="mt-2 text-sm text-slate-500">
               Board invitation
@@ -144,7 +144,7 @@ export default function InviteClient({
 
           <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
             <p className="text-sm leading-6 text-slate-600">
-              You have been invited to a ToutchBase board.
+              You have been invited to a TouchBase board.
               Sign in if you already have an account, or create
               an account with the email address that received
               this invitation.
@@ -184,7 +184,7 @@ export default function InviteClient({
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-900">
-            ToutchBase
+            TouchBase
           </h1>
           <p className="mt-2 text-sm text-slate-500">
             Board invitation
@@ -212,7 +212,7 @@ export default function InviteClient({
           <div className="mt-8">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
               <p className="text-sm text-slate-500">
-                You have been invited to collaborate on a ToutchBase board.
+                You have been invited to collaborate on a TouchBase board.
               </p>
 
               <div className="mt-4">

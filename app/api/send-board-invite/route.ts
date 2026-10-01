@@ -190,7 +190,7 @@ export async function POST(request: Request) {
       error,
     } = await resend.emails.send({
       from:
-        "ToutchBase <noreply@urbanenglish.es>",
+        "TouchBase <noreply@urbanenglish.es>",
 
       to: inviteEmail,
 
@@ -213,7 +213,7 @@ export async function POST(request: Request) {
               font-size: 28px;
             "
           >
-            ToutchBase
+            TouchBase
           </h1>
 
           <h2

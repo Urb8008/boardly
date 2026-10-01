@@ -847,7 +847,7 @@ export default function BoardClient({
                 invite.id,
               boardName:
                 board?.name ||
-                "ToutchBase board",
+                "TouchBase board",
             }),
           }
         );
@@ -2947,7 +2947,7 @@ export default function BoardClient({
               }
               className="font-bold text-slate-900"
             >
-              ToutchBase
+              TouchBase
             </button>
 
             <div className="flex items-center gap-2">

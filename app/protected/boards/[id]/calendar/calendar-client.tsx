@@ -1032,7 +1032,7 @@ export default function CalendarClient({
             }
             className="font-bold text-slate-900"
           >
-            ToutchBase
+            TouchBase
           </button>
 
           <div className="flex gap-2">

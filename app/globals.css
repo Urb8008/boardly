@@ -84,10 +84,10 @@ button:not(:disabled):active {
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
 }
 /* ---------------------------------
-   URBAN + TOUTCHBASE BRANDING
+   URBAN + TouchBase BRANDING
 ---------------------------------- */
 
-/* Logo before ToutchBase in page headers */
+/* Logo before TouchBase in page headers */
 div.border-b button.font-bold.text-slate-900 {
   display: inline-flex;
   align-items: center;
