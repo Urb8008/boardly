@@ -70,12 +70,6 @@ export async function POST(request: NextRequest) {
   .replace(/^\uFEFF/, "")
   .trim();
 
-console.log(
-  "JaaS key format:",
-  privateKeyPem.startsWith("-----BEGIN PRIVATE KEY-----"),
-  privateKeyPem.endsWith("-----END PRIVATE KEY-----")
-);
-
 const privateKey = await importPKCS8(
   privateKeyPem,
   "RS256"
