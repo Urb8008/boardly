@@ -36,6 +36,59 @@ type BoardCall = {
   ended_at: string | null;
 };
 
+
+
+type Wallpaper =
+  | "default"
+  | "ocean"
+  | "forest"
+  | "sunset"
+  | "midnight";
+
+type AccentColor =
+  | "blue"
+  | "purple"
+  | "green"
+  | "orange"
+  | "pink";
+
+type TabColor =
+  | "slate"
+  | "blue"
+  | "green"
+  | "amber"
+  | "rose";
+
+type UserPreferences = {
+  wallpaper: Wallpaper;
+  accent_color: AccentColor;
+  tab_color: TabColor;
+};
+
+const WALLPAPER_STYLES: Record<Wallpaper, string> = {
+  default: "linear-gradient(135deg, #f8fafc, #e2e8f0)",
+  ocean: "linear-gradient(135deg, #0ea5e9, #1e3a8a)",
+  forest: "linear-gradient(135deg, #15803d, #052e16)",
+  sunset: "linear-gradient(135deg, #fb7185, #f97316, #7c3aed)",
+  midnight: "linear-gradient(135deg, #0f172a, #312e81)",
+};
+
+const ACCENT_COLORS: Record<AccentColor, string> = {
+  blue: "#2563eb",
+  purple: "#7c3aed",
+  green: "#16a34a",
+  orange: "#ea580c",
+  pink: "#db2777",
+};
+
+const TAB_COLORS: Record<TabColor, string> = {
+  slate: "#475569",
+  blue: "#2563eb",
+  green: "#16a34a",
+  amber: "#d97706",
+  rose: "#e11d48",
+};
+
 type JitsiApi = {
   dispose: () => void;
 };
@@ -147,6 +200,26 @@ export default function MessengerClient({
     setCallError,
   ] =
     useState("");
+
+
+
+  const [
+    preferences,
+    setPreferences,
+  ] = useState<UserPreferences>({
+    wallpaper: "default",
+    accent_color: "blue",
+    tab_color: "slate",
+  });
+
+  const wallpaperBackground =
+    WALLPAPER_STYLES[preferences.wallpaper];
+
+  const accentColor =
+    ACCENT_COLORS[preferences.accent_color];
+
+  const tabColor =
+    TAB_COLORS[preferences.tab_color];
 
   const messagesEndRef =
     useRef<HTMLDivElement | null>(
@@ -376,9 +449,43 @@ export default function MessengerClient({
       loadBoard(),
       loadMessages(),
       loadActiveCall(),
+      loadPreferences(user.id),
     ]);
 
     setLoading(false);
+  }
+
+
+
+  async function loadPreferences(
+    userId: string
+  ) {
+    const { data, error } =
+      await supabase
+        .from("user_preferences")
+        .select(
+          "wallpaper, accent_color, tab_color"
+        )
+        .eq("user_id", userId)
+        .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Error loading preferences:",
+        error.message
+      );
+      return;
+    }
+
+    if (!data) return;
+
+    setPreferences({
+      wallpaper: data.wallpaper as Wallpaper,
+      accent_color:
+        data.accent_color as AccentColor,
+      tab_color:
+        data.tab_color as TabColor,
+    });
   }
 
   async function loadBoard() {
@@ -917,7 +1024,15 @@ export default function MessengerClient({
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-100 p-8">
+      <main
+        className="min-h-screen p-8"
+        style={{
+          backgroundImage: wallpaperBackground,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+        }}
+      >
         <div className="mx-auto max-w-5xl animate-pulse">
           <div className="h-10 w-64 rounded bg-slate-300" />
 
@@ -928,8 +1043,16 @@ export default function MessengerClient({
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-slate-100">
-      <div className="border-b border-slate-200 bg-white">
+    <main
+      className="flex min-h-screen flex-col"
+      style={{
+        backgroundImage: wallpaperBackground,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      }}
+    >
+      <div className="border-b border-white/30 bg-white/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
           <button
             type="button"
@@ -951,7 +1074,8 @@ export default function MessengerClient({
                   `/protected/boards/${boardId}`
                 )
               }
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:brightness-95"
+              style={{ backgroundColor: tabColor }}
             >
               Board
             </button>
@@ -963,9 +1087,23 @@ export default function MessengerClient({
                   `/protected/boards/${boardId}/calendar`
                 )
               }
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:brightness-95"
+              style={{ backgroundColor: tabColor }}
             >
               Calendar
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  "/protected/settings/preferences"
+                )
+              }
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:brightness-95"
+              style={{ backgroundColor: tabColor }}
+            >
+              Preferences
             </button>
 
             {activeCall ? (
@@ -987,7 +1125,8 @@ export default function MessengerClient({
                 disabled={
                   callBusy
                 }
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: accentColor }}
               >
                 {callBusy
                   ? "Starting..."
@@ -999,7 +1138,7 @@ export default function MessengerClient({
       </div>
 
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
-        <div className="mb-5">
+        <div className="mb-5 rounded-2xl bg-white/85 p-5 shadow-sm backdrop-blur">
           <button
             type="button"
             onClick={() =>
@@ -1107,8 +1246,8 @@ export default function MessengerClient({
           </div>
         )}
 
-        <div className="flex min-h-[650px] flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+        <div className="flex min-h-[650px] flex-1 flex-col overflow-hidden rounded-3xl border border-white/40 bg-white/90 shadow-xl backdrop-blur">
+          <div className="border-b border-slate-200/80 bg-white/70 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-semibold text-slate-900">
@@ -1128,7 +1267,7 @@ export default function MessengerClient({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto bg-slate-50/60 p-6">
+          <div className="flex-1 overflow-y-auto bg-white/55 p-6">
             {messages.length ===
             0 ? (
               <div className="flex h-full min-h-80 items-center justify-center">
@@ -1195,9 +1334,14 @@ export default function MessengerClient({
                           <div
                             className={`rounded-2xl px-4 py-3 text-sm leading-6 ${
                               isMine
-                                ? "rounded-br-md bg-blue-600 text-white"
+                                ? "rounded-br-md text-white"
                                 : "rounded-bl-md border border-slate-200 bg-white text-slate-800"
                             }`}
+                            style={
+                              isMine
+                                ? { backgroundColor: accentColor }
+                                : undefined
+                            }
                           >
                             <p className="whitespace-pre-wrap break-words">
                               {
@@ -1282,7 +1426,8 @@ export default function MessengerClient({
                   sending ||
                   !newMessage.trim()
                 }
-                className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl px-5 py-3 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: accentColor }}
               >
                 {sending
                   ? "Sending..."
