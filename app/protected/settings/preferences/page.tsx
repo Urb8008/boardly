@@ -364,7 +364,7 @@ export default function PreferencesPage() {
             onClick={() =>
               router.back()
             }
-            className="mb-4 text-sm font-medium text-slate-500 transition hover:text-slate-900"
+            className="mb-4 inline-flex items-center rounded-xl border border-white/70 bg-white/95 px-4 py-2.5 text-base font-bold text-slate-900 shadow-md backdrop-blur transition hover:bg-white hover:shadow-lg"
           >
             ← Back
           </button>

@@ -412,34 +412,10 @@ export default function BoardClient({
     currentUserId !== null &&
     board.user_id === currentUserId;
 
-  const natureWallpaper =
-    WALLPAPER_OPTIONS.find(
-      (option) =>
-        option.id ===
-        preferences.wallpaper
+  const wallpaperBackground =
+    getWallpaperBackground(
+      preferences.wallpaper
     );
-
-  const wallpaperStyle: React.CSSProperties =
-    natureWallpaper
-      ? {
-          backgroundImage: `url("${natureWallpaper.image}")`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          backgroundAttachment: "fixed",
-          backgroundColor: "#e2e8f0",
-        }
-      : {
-          backgroundImage:
-            WALLPAPER_STYLES[
-              preferences.wallpaper
-            ] ||
-            WALLPAPER_STYLES.default,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          backgroundAttachment: "fixed",
-        };
 
   const accentColor =
     ACCENT_COLORS[
@@ -2902,7 +2878,14 @@ export default function BoardClient({
     <>
       <main
         className="min-h-screen"
-        style={wallpaperStyle}
+        style={{
+          backgroundImage:
+            wallpaperBackground,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+        }}
       >
         <div className="border-b border-white/30 bg-white/90 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
@@ -2979,7 +2962,7 @@ export default function BoardClient({
                   "/protected/boards"
                 )
               }
-              className="text-sm font-medium text-slate-500 hover:text-slate-900"
+              className="inline-flex items-center rounded-xl border border-white/70 bg-white/95 px-4 py-2.5 text-base font-bold text-slate-900 shadow-md backdrop-blur transition hover:bg-white hover:shadow-lg"
             >
               ← Back to boards
             </button>
