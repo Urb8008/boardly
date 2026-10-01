@@ -237,6 +237,16 @@ export default function MessengerClient({
     async function openJaasCall() {
       setCallError("");
 
+      const roomName =
+        activeCall?.room_name;
+
+      if (!roomName) {
+        setCallError(
+          "No active video call found."
+        );
+        return;
+      }
+
       try {
         const response =
           await fetch(
@@ -249,8 +259,7 @@ export default function MessengerClient({
               },
               body: JSON.stringify({
                 boardId,
-                roomName:
-                  activeCall.room_name,
+                roomName,
               }),
             }
           );
@@ -287,7 +296,7 @@ export default function MessengerClient({
           new window.JitsiMeetExternalAPI(
             "8x8.vc",
             {
-              roomName: `${result.appId}/${result.roomName}`,
+              roomName: `${result.appId}/${roomName}`,
               jwt: result.token,
               parentNode:
                 videoContainerRef.current,
