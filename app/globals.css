@@ -152,3 +152,10 @@ body::after {
     border-radius: 8px;
   }
 }
+/* Softer, more transparent top navigation bar */
+div.border-b.bg-white\/90 {
+  background: rgba(226, 232, 240, 0.62) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
