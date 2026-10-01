@@ -116,7 +116,12 @@ type TabColor =
   | "blue"
   | "green"
   | "amber"
-  | "rose";
+  | "rose"
+  | "slate-soft"
+  | "blue-soft"
+  | "green-soft"
+  | "amber-soft"
+  | "rose-soft";
 
 type UserPreferences = {
   wallpaper: Wallpaper;
@@ -184,6 +189,11 @@ const TAB_COLORS: Record<
   green: "#16a34a",
   amber: "#d97706",
   rose: "#e11d48",
+  "slate-soft": "rgba(71, 85, 105, 0.72)",
+  "blue-soft": "rgba(37, 99, 235, 0.72)",
+  "green-soft": "rgba(22, 163, 74, 0.72)",
+  "amber-soft": "rgba(217, 119, 6, 0.72)",
+  "rose-soft": "rgba(225, 29, 72, 0.72)",
 };
 
 type ModalChecklistItem = {

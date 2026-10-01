@@ -24,7 +24,12 @@ type TabColor =
   | "blue"
   | "green"
   | "amber"
-  | "rose";
+  | "rose"
+  | "slate-soft"
+  | "blue-soft"
+  | "green-soft"
+  | "amber-soft"
+  | "rose-soft";
 
 const wallpapers: {
   value: Wallpaper;
@@ -154,6 +159,31 @@ const tabColors: {
     value: "rose",
     label: "Rose",
     color: "#e11d48",
+  },
+  {
+    value: "slate-soft",
+    label: "Slate glass",
+    color: "rgba(71, 85, 105, 0.72)",
+  },
+  {
+    value: "blue-soft",
+    label: "Blue glass",
+    color: "rgba(37, 99, 235, 0.72)",
+  },
+  {
+    value: "green-soft",
+    label: "Green glass",
+    color: "rgba(22, 163, 74, 0.72)",
+  },
+  {
+    value: "amber-soft",
+    label: "Amber glass",
+    color: "rgba(217, 119, 6, 0.72)",
+  },
+  {
+    value: "rose-soft",
+    label: "Rose glass",
+    color: "rgba(225, 29, 72, 0.72)",
   },
 ];
 
@@ -522,8 +552,7 @@ export default function PreferencesPage() {
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Choose the colour used for
-              board column headings.
+              Choose a solid colour or a softer transparent glass colour for board column headings.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-4">
