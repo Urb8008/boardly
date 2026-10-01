@@ -2609,7 +2609,7 @@ export default function BoardClient({
             card.id
           )
         }
-        className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+        className="group rounded-xl border border-white/50 bg-white/72 p-4 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/82 hover:shadow-md"
       >
         <div className="flex items-start justify-between gap-3">
           <p className="font-medium leading-6 text-slate-800">
@@ -2768,7 +2768,7 @@ export default function BoardClient({
             status
           )
         }
-        className="flex min-h-[420px] w-80 flex-col rounded-2xl border border-white/40 bg-white/85 p-4 shadow-lg backdrop-blur"
+        className="flex min-h-[420px] w-80 flex-col rounded-2xl border border-white/50 bg-white/64 p-4 shadow-lg backdrop-blur-md"
       >
         <div
           className="flex items-center justify-between rounded-xl px-3 py-3 text-white"
@@ -2954,7 +2954,7 @@ export default function BoardClient({
         </div>
 
         <div className="mx-auto max-w-7xl p-8">
-          <div className="rounded-3xl bg-white/85 p-6 shadow-xl backdrop-blur-md">
+          <div className="rounded-3xl border border-white/40 bg-white/58 p-6 shadow-xl backdrop-blur-md">
             <button
               type="button"
               onClick={() =>
@@ -3023,7 +3023,7 @@ export default function BoardClient({
               )}
             </div>
 
-            <div className="mt-6 rounded-2xl border border-white/50 bg-white/70 p-4">
+            <div className="mt-6 rounded-2xl border border-white/50 bg-white/58 p-4 backdrop-blur-md">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-semibold text-slate-900">
