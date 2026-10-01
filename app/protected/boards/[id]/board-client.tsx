@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { WALLPAPER_OPTIONS } from "@/lib/preferences/options";
 
 type Board = {
   id: number;
@@ -96,12 +97,7 @@ type PendingCardLink = {
   url: string;
 };
 
-type Wallpaper =
-  | "default"
-  | "ocean"
-  | "forest"
-  | "sunset"
-  | "midnight";
+type Wallpaper = string;
 
 type AccentColor =
   | "blue"
@@ -124,7 +120,7 @@ type UserPreferences = {
 };
 
 const WALLPAPER_STYLES: Record<
-  Wallpaper,
+  string,
   string
 > = {
   default:
@@ -138,6 +134,25 @@ const WALLPAPER_STYLES: Record<
   midnight:
     "linear-gradient(135deg, #0f172a, #312e81)",
 };
+
+function getWallpaperBackground(
+  wallpaper: string
+) {
+  const natureWallpaper =
+    WALLPAPER_OPTIONS.find(
+      (option) =>
+        option.id === wallpaper
+    );
+
+  if (natureWallpaper) {
+    return `url("${natureWallpaper.image}")`;
+  }
+
+  return (
+    WALLPAPER_STYLES[wallpaper] ||
+    WALLPAPER_STYLES.default
+  );
+}
 
 const ACCENT_COLORS: Record<
   AccentColor,
@@ -397,10 +412,34 @@ export default function BoardClient({
     currentUserId !== null &&
     board.user_id === currentUserId;
 
-  const wallpaperBackground =
-    WALLPAPER_STYLES[
-      preferences.wallpaper
-    ];
+  const natureWallpaper =
+    WALLPAPER_OPTIONS.find(
+      (option) =>
+        option.id ===
+        preferences.wallpaper
+    );
+
+  const wallpaperStyle: React.CSSProperties =
+    natureWallpaper
+      ? {
+          backgroundImage: `url("${natureWallpaper.image}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+          backgroundColor: "#e2e8f0",
+        }
+      : {
+          backgroundImage:
+            WALLPAPER_STYLES[
+              preferences.wallpaper
+            ] ||
+            WALLPAPER_STYLES.default,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+        };
 
   const accentColor =
     ACCENT_COLORS[
@@ -2863,14 +2902,7 @@ export default function BoardClient({
     <>
       <main
         className="min-h-screen"
-        style={{
-          backgroundImage:
-            wallpaperBackground,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          backgroundAttachment: "fixed",
-        }}
+        style={wallpaperStyle}
       >
         <div className="border-b border-white/30 bg-white/90 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { WALLPAPER_OPTIONS } from "@/lib/preferences/options";
 
 type Board = {
   id: number;
@@ -24,21 +25,7 @@ type BoardStats = {
   done: number;
 };
 
-type BoardLink = {
-  id: number;
-  board_id: number;
-  user_id: string;
-  label: string | null;
-  url: string;
-  created_at: string;
-};
-
-type Wallpaper =
-  | "default"
-  | "ocean"
-  | "forest"
-  | "sunset"
-  | "midnight";
+type Wallpaper = string;
 
 type AccentColor =
   | "blue"
@@ -52,7 +39,7 @@ type UserPreferences = {
   accent_color: AccentColor;
 };
 
-const WALLPAPER_STYLES: Record<Wallpaper, string> = {
+const WALLPAPER_STYLES: Record<string, string> = {
   default:
     "linear-gradient(135deg, #f8fafc, #e2e8f0)",
   ocean:
@@ -83,22 +70,6 @@ export default function BoardsPage() {
     Record<number, BoardStats>
   >({});
 
-  const [boardLinks, setBoardLinks] = useState<
-    Record<number, BoardLink[]>
-  >({});
-
-  const [linkTarget, setLinkTarget] =
-    useState<Board | null>(null);
-
-  const [linkLabel, setLinkLabel] =
-    useState("");
-
-  const [linkUrl, setLinkUrl] =
-    useState("");
-
-  const [linkError, setLinkError] =
-    useState("");
-
   const [currentUserId, setCurrentUserId] =
     useState<string | null>(null);
 
@@ -127,8 +98,31 @@ export default function BoardsPage() {
       accent_color: "blue",
     });
 
-  const wallpaperBackground =
-    WALLPAPER_STYLES[preferences.wallpaper];
+  const natureWallpaper =
+    WALLPAPER_OPTIONS.find(
+      (option) =>
+        option.id === preferences.wallpaper
+    );
+
+  const wallpaperStyle: React.CSSProperties =
+    natureWallpaper
+      ? {
+          backgroundImage: `url("${natureWallpaper.image}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+          backgroundColor: "#e2e8f0",
+        }
+      : {
+          backgroundImage:
+            WALLPAPER_STYLES[preferences.wallpaper] ||
+            WALLPAPER_STYLES.default,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+        };
 
   const accentColor =
     ACCENT_COLORS[preferences.accent_color];
@@ -221,7 +215,6 @@ export default function BoardsPage() {
     if (availableBoards.length === 0) {
       setBoards([]);
       setBoardStats({});
-      setBoardLinks({});
       return;
     }
 
@@ -289,52 +282,8 @@ export default function BoardsPage() {
       }
     );
 
-    const {
-      data: linksData,
-      error: linksError,
-    } = await supabase
-      .from("board_links")
-      .select("*")
-      .in("board_id", boardIds)
-      .order("created_at", {
-        ascending: true,
-      });
-
-    if (linksError) {
-      console.error(
-        "Error loading board links:",
-        linksError.message
-      );
-    }
-
-    const linksByBoard: Record<
-      number,
-      BoardLink[]
-    > = {};
-
-    availableBoards.forEach(
-      (board) => {
-        linksByBoard[board.id] = [];
-      }
-    );
-
-    (linksData || []).forEach(
-      (link: BoardLink) => {
-        if (
-          linksByBoard[
-            link.board_id
-          ]
-        ) {
-          linksByBoard[
-            link.board_id
-          ].push(link);
-        }
-      }
-    );
-
     setBoards(availableBoards);
     setBoardStats(stats);
-    setBoardLinks(linksByBoard);
   }
 
   function openCreateModal() {
@@ -415,11 +364,6 @@ export default function BoardsPage() {
         inProgress: 0,
         done: 0,
       },
-    }));
-
-    setBoardLinks((currentLinks) => ({
-      ...currentLinks,
-      [board.id]: [],
     }));
 
     closeCreateModal();
@@ -550,214 +494,7 @@ export default function BoardsPage() {
       return updatedStats;
     });
 
-    setBoardLinks((currentLinks) => {
-      const updatedLinks = {
-        ...currentLinks,
-      };
-
-      delete updatedLinks[
-        deleteTarget.id
-      ];
-
-      return updatedLinks;
-    });
-
     setDeleteTarget(null);
-  }
-
-  function normalizeHttpUrl(
-    value: string
-  ) {
-    const trimmed =
-      value.trim();
-
-    if (!trimmed) {
-      return null;
-    }
-
-    const candidate =
-      /^https?:\/\//i.test(
-        trimmed
-      )
-        ? trimmed
-        : `https://${trimmed}`;
-
-    try {
-      const parsed =
-        new URL(candidate);
-
-      if (
-        parsed.protocol !== "http:" &&
-        parsed.protocol !== "https:"
-      ) {
-        return null;
-      }
-
-      return parsed.toString();
-    } catch {
-      return null;
-    }
-  }
-
-  function getLinkLabel(
-    link: BoardLink
-  ) {
-    if (link.label?.trim()) {
-      return link.label.trim();
-    }
-
-    try {
-      return new URL(
-        link.url
-      ).hostname;
-    } catch {
-      return link.url;
-    }
-  }
-
-  function openLinkModal(
-    board: Board
-  ) {
-    setLinkTarget(board);
-    setLinkLabel("");
-    setLinkUrl("");
-    setLinkError("");
-  }
-
-  function closeLinkModal() {
-    setLinkTarget(null);
-    setLinkLabel("");
-    setLinkUrl("");
-    setLinkError("");
-  }
-
-  async function addBoardLink() {
-    if (!linkTarget) return;
-
-    const user =
-      await getCurrentUser();
-
-    if (!user) {
-      router.push("/auth/login");
-      return;
-    }
-
-    const normalizedUrl =
-      normalizeHttpUrl(
-        linkUrl
-      );
-
-    if (!normalizedUrl) {
-      setLinkError(
-        "Enter a valid web address."
-      );
-      return;
-    }
-
-    const {
-      data,
-      error,
-    } = await supabase
-      .from("board_links")
-      .insert({
-        board_id:
-          linkTarget.id,
-        user_id:
-          user.id,
-        label:
-          linkLabel.trim() ||
-          null,
-        url:
-          normalizedUrl,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      setLinkError(
-        error.message
-      );
-      return;
-    }
-
-    setBoardLinks(
-      (currentLinks) => ({
-        ...currentLinks,
-        [linkTarget.id]: [
-          ...(
-            currentLinks[
-              linkTarget.id
-            ] || []
-          ),
-          data as BoardLink,
-        ],
-      })
-    );
-
-    closeLinkModal();
-  }
-
-  async function deleteBoardLink(
-    link: BoardLink
-  ) {
-    const user =
-      await getCurrentUser();
-
-    if (!user) {
-      router.push("/auth/login");
-      return;
-    }
-
-    if (
-      link.user_id !== user.id
-    ) {
-      alert(
-        "You can only delete links that you added."
-      );
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        `Delete ${getLinkLabel(
-          link
-        )}?`
-      );
-
-    if (!confirmed) return;
-
-    const { error } =
-      await supabase
-        .from("board_links")
-        .delete()
-        .eq("id", link.id)
-        .eq(
-          "user_id",
-          user.id
-        );
-
-    if (error) {
-      alert(
-        `Error deleting link: ${error.message}`
-      );
-      return;
-    }
-
-    setBoardLinks(
-      (currentLinks) => ({
-        ...currentLinks,
-        [link.board_id]:
-          (
-            currentLinks[
-              link.board_id
-            ] || []
-          ).filter(
-            (item) =>
-              item.id !==
-              link.id
-          ),
-      })
-    );
   }
 
   function openBoard(boardId: number) {
@@ -785,14 +522,7 @@ export default function BoardsPage() {
     return (
       <main
         className="min-h-screen"
-        style={{
-          backgroundImage:
-            wallpaperBackground,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          backgroundAttachment: "fixed",
-        }}
+        style={wallpaperStyle}
       >
         <div className="border-b border-white/30 bg-white/90 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
@@ -821,14 +551,7 @@ export default function BoardsPage() {
     <>
       <main
         className="min-h-screen"
-        style={{
-          backgroundImage:
-            wallpaperBackground,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          backgroundAttachment: "fixed",
-        }}
+        style={wallpaperStyle}
       >
         {/* TOP NAVIGATION */}
 
@@ -961,11 +684,6 @@ export default function BoardsPage() {
                     board.user_id ===
                     currentUserId;
 
-                  const links =
-                    boardLinks[
-                      board.id
-                    ] || [];
-
                   return (
                     <div
                       key={board.id}
@@ -1036,93 +754,6 @@ export default function BoardsPage() {
                           </span>
                         </div>
                       </button>
-
-                      <div className="border-t border-slate-100 px-6 py-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Links
-                          </p>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openLinkModal(
-                                board
-                              )
-                            }
-                            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
-                          >
-                            + Add link
-                          </button>
-                        </div>
-
-                        {links.length ===
-                        0 ? (
-                          <p className="mt-3 text-xs text-slate-400">
-                            No links yet.
-                          </p>
-                        ) : (
-                          <div className="mt-3 flex flex-col gap-2">
-                            {links
-                              .slice(0, 3)
-                              .map(
-                                (
-                                  link
-                                ) => (
-                                  <div
-                                    key={
-                                      link.id
-                                    }
-                                    className="flex items-center justify-between gap-2"
-                                  >
-                                    <a
-                                      href={
-                                        link.url
-                                      }
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="min-w-0 flex-1 truncate text-sm font-medium text-blue-700 hover:underline"
-                                      title={
-                                        link.url
-                                      }
-                                    >
-                                      🔗{" "}
-                                      {getLinkLabel(
-                                        link
-                                      )}
-                                    </a>
-
-                                    {link.user_id ===
-                                      currentUserId && (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          deleteBoardLink(
-                                            link
-                                          )
-                                        }
-                                        className="shrink-0 text-xs font-semibold text-red-500 hover:text-red-700"
-                                        title="Delete link"
-                                      >
-                                        ×
-                                      </button>
-                                    )}
-                                  </div>
-                                )
-                              )}
-
-                            {links.length >
-                              3 && (
-                              <p className="text-xs text-slate-400">
-                                +
-                                {links.length -
-                                  3}{" "}
-                                more
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
 
                       <div className="border-t border-slate-100 px-6 py-4">
                         {isOwner ? (
@@ -1227,113 +858,6 @@ export default function BoardsPage() {
                 }}
               >
                 Create board
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ADD BOARD LINK MODAL */}
-
-      {linkTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Add link
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {linkTarget.name}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={
-                  closeLinkModal
-                }
-                className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100"
-              >
-                ✕
-              </button>
-            </div>
-
-            <label className="mt-6 block text-sm font-medium text-slate-700">
-              Label
-            </label>
-
-            <input
-              value={
-                linkLabel
-              }
-              onChange={(event) =>
-                setLinkLabel(
-                  event.target.value
-                )
-              }
-              placeholder="e.g. Google Drive"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-
-            <label className="mt-5 block text-sm font-medium text-slate-700">
-              Web address
-            </label>
-
-            <input
-              autoFocus
-              value={
-                linkUrl
-              }
-              onChange={(event) => {
-                setLinkUrl(
-                  event.target.value
-                );
-                setLinkError("");
-              }}
-              onKeyDown={(event) => {
-                if (
-                  event.key ===
-                  "Enter"
-                ) {
-                  event.preventDefault();
-                  addBoardLink();
-                }
-              }}
-              placeholder="https://example.com"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-
-            {linkError && (
-              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                {linkError}
-              </p>
-            )}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={
-                  closeLinkModal
-                }
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={
-                  addBoardLink
-                }
-                className="rounded-lg px-5 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                style={{
-                  backgroundColor:
-                    accentColor,
-                }}
-              >
-                Add link
               </button>
             </div>
           </div>
