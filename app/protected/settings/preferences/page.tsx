@@ -437,12 +437,11 @@ export default function PreferencesPage() {
 
           <section className="rounded-2xl border border-white/50 bg-white/82 p-6 shadow-xl backdrop-blur-md">
             <h2 className="text-xl font-semibold text-slate-900">
-              Accent colour
+              Button colour
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Used for buttons, links and
-              highlights.
+              Choose the colour used for primary buttons and actions.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-4">
