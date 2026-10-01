@@ -9,6 +9,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import { WALLPAPER_OPTIONS } from "@/lib/preferences/options";
 
 type Board = {
   id: number;
@@ -38,12 +39,7 @@ type BoardCall = {
 
 
 
-type Wallpaper =
-  | "default"
-  | "ocean"
-  | "forest"
-  | "sunset"
-  | "midnight";
+type Wallpaper = string;
 
 type AccentColor =
   | "blue"
@@ -65,7 +61,7 @@ type UserPreferences = {
   tab_color: TabColor;
 };
 
-const WALLPAPER_STYLES: Record<Wallpaper, string> = {
+const WALLPAPER_STYLES: Record<string, string> = {
   default: "linear-gradient(135deg, #f8fafc, #e2e8f0)",
   ocean: "linear-gradient(135deg, #0ea5e9, #1e3a8a)",
   forest: "linear-gradient(135deg, #15803d, #052e16)",
@@ -212,8 +208,36 @@ export default function MessengerClient({
     tab_color: "slate",
   });
 
-  const wallpaperBackground =
-    WALLPAPER_STYLES[preferences.wallpaper];
+  const natureWallpaper =
+    WALLPAPER_OPTIONS.find(
+      (option) =>
+        option.id === preferences.wallpaper
+    );
+
+  const wallpaperStyle: React.CSSProperties =
+    natureWallpaper
+      ? {
+          backgroundImage: `linear-gradient(
+            rgba(248, 250, 252, 0.32),
+            rgba(248, 250, 252, 0.32)
+          ), url("${natureWallpaper.image}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+          backgroundColor: "#e2e8f0",
+        }
+      : {
+          backgroundImage:
+            WALLPAPER_STYLES[
+              preferences.wallpaper
+            ] ||
+            WALLPAPER_STYLES.default,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+        };
 
   const accentColor =
     ACCENT_COLORS[preferences.accent_color];
@@ -1026,12 +1050,7 @@ export default function MessengerClient({
     return (
       <main
         className="min-h-screen p-8"
-        style={{
-          backgroundImage: wallpaperBackground,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundAttachment: "fixed",
-        }}
+        style={wallpaperStyle}
       >
         <div className="mx-auto max-w-5xl animate-pulse">
           <div className="h-10 w-64 rounded bg-slate-300" />
@@ -1045,12 +1064,7 @@ export default function MessengerClient({
   return (
     <main
       className="flex min-h-screen flex-col"
-      style={{
-        backgroundImage: wallpaperBackground,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-      }}
+      style={wallpaperStyle}
     >
       <div className="border-b border-white/30 bg-white/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
@@ -1246,8 +1260,8 @@ export default function MessengerClient({
           </div>
         )}
 
-        <div className="flex min-h-[650px] flex-1 flex-col overflow-hidden rounded-3xl border border-white/40 bg-white/90 shadow-xl backdrop-blur">
-          <div className="border-b border-slate-200/80 bg-white/70 px-6 py-4">
+        <div className="flex min-h-[650px] flex-1 flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/76 shadow-xl backdrop-blur-md">
+          <div className="border-b border-slate-200/70 bg-white/72 px-6 py-4 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-semibold text-slate-900">
@@ -1267,7 +1281,7 @@ export default function MessengerClient({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto bg-white/55 p-6">
+          <div className="flex-1 overflow-y-auto bg-white/58 p-6">
             {messages.length ===
             0 ? (
               <div className="flex h-full min-h-80 items-center justify-center">
@@ -1378,7 +1392,7 @@ export default function MessengerClient({
             )}
           </div>
 
-          <div className="border-t border-slate-200 bg-white p-4">
+          <div className="border-t border-slate-200/80 bg-white/88 p-4 backdrop-blur-sm">
             {errorMessage && (
               <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
                 {
