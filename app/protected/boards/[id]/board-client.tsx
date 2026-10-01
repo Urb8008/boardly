@@ -104,7 +104,12 @@ type AccentColor =
   | "purple"
   | "green"
   | "orange"
-  | "pink";
+  | "pink"
+  | "blue-soft"
+  | "purple-soft"
+  | "green-soft"
+  | "orange-soft"
+  | "pink-soft";
 
 type TabColor =
   | "slate"
@@ -163,6 +168,11 @@ const ACCENT_COLORS: Record<
   green: "#16a34a",
   orange: "#ea580c",
   pink: "#db2777",
+  "blue-soft": "rgba(37, 99, 235, 0.72)",
+  "purple-soft": "rgba(124, 58, 237, 0.72)",
+  "green-soft": "rgba(22, 163, 74, 0.72)",
+  "orange-soft": "rgba(234, 88, 12, 0.72)",
+  "pink-soft": "rgba(219, 39, 119, 0.72)",
 };
 
 const TAB_COLORS: Record<

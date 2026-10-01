@@ -12,7 +12,12 @@ type AccentColor =
   | "purple"
   | "green"
   | "orange"
-  | "pink";
+  | "pink"
+  | "blue-soft"
+  | "purple-soft"
+  | "green-soft"
+  | "orange-soft"
+  | "pink-soft";
 
 type TabColor =
   | "slate"
@@ -92,6 +97,31 @@ const accentColors: {
     value: "pink",
     label: "Pink",
     color: "#db2777",
+  },
+  {
+    value: "blue-soft",
+    label: "Blue glass",
+    color: "rgba(37, 99, 235, 0.72)",
+  },
+  {
+    value: "purple-soft",
+    label: "Purple glass",
+    color: "rgba(124, 58, 237, 0.72)",
+  },
+  {
+    value: "green-soft",
+    label: "Green glass",
+    color: "rgba(22, 163, 74, 0.72)",
+  },
+  {
+    value: "orange-soft",
+    label: "Orange glass",
+    color: "rgba(234, 88, 12, 0.72)",
+  },
+  {
+    value: "pink-soft",
+    label: "Pink glass",
+    color: "rgba(219, 39, 119, 0.72)",
   },
 ];
 
@@ -441,7 +471,7 @@ export default function PreferencesPage() {
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Choose the colour used for primary buttons and actions.
+              Choose a solid colour or a softer transparent glass version for buttons and actions.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-4">
