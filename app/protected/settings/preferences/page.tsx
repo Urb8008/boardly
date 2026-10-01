@@ -1,15 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { WALLPAPER_OPTIONS } from "@/lib/preferences/options";
 
-type Wallpaper =
-  | "default"
-  | "ocean"
-  | "forest"
-  | "sunset"
-  | "midnight";
+type Wallpaper = string;
 
 type AccentColor =
   | "blue"
@@ -60,6 +56,11 @@ const wallpapers: {
     preview:
       "linear-gradient(135deg, #0f172a, #312e81)",
   },
+  ...WALLPAPER_OPTIONS.map((item) => ({
+    value: item.id,
+    label: item.name,
+    preview: `url("${item.image}") center / cover no-repeat`,
+  })),
 ];
 
 const accentColors: {
@@ -307,7 +308,7 @@ export default function PreferencesPage() {
             }
             className="mb-4 text-sm font-medium text-slate-500 transition hover:text-slate-900"
           >
-            â† Back
+            ← Back
           </button>
 
           <h1 className="text-3xl font-bold text-slate-900">
