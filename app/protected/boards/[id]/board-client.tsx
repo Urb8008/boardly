@@ -2623,30 +2623,58 @@ export default function BoardClient({
       <div
         key={card.id}
         draggable
+        role="button"
+        tabIndex={0}
+        onClick={(event) => {
+          const target =
+            event.target as HTMLElement;
+
+          if (
+            target.closest(
+              "button, a, input, textarea, select, label"
+            )
+          ) {
+            return;
+          }
+
+          openEditCardModal(
+            card
+          );
+        }}
+        onKeyDown={(event) => {
+          const target =
+            event.target as HTMLElement;
+
+          if (
+            target.closest(
+              "button, a, input, textarea, select, label"
+            )
+          ) {
+            return;
+          }
+
+          if (
+            event.key === "Enter" ||
+            event.key === " "
+          ) {
+            event.preventDefault();
+            openEditCardModal(
+              card
+            );
+          }
+        }}
         onDragStart={(event) =>
           handleDragStart(
             event,
             card.id
           )
         }
-        className="group rounded-xl border border-white/50 bg-white/72 p-4 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/82 hover:shadow-md"
+        className="group cursor-pointer rounded-xl border border-white/50 bg-white/72 p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:bg-white/82 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
       >
         <div className="flex items-start justify-between gap-3">
           <p className="font-medium leading-6 text-slate-800">
             {card.title}
           </p>
-
-          <button
-            type="button"
-            onClick={() =>
-              openEditCardModal(
-                card
-              )
-            }
-            className="rounded-md px-2 py-1 text-sm text-slate-400 opacity-0 transition hover:bg-slate-100 hover:text-slate-700 group-hover:opacity-100"
-          >
-            Edit
-          </button>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -2730,16 +2758,17 @@ export default function BoardClient({
 
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-slate-400">
-            Drag to move
+            Drag to move · Click to edit
           </span>
 
           <button
             type="button"
-            onClick={() =>
+            onClick={(event) => {
+              event.stopPropagation();
               setDeleteCardTarget(
                 card
-              )
-            }
+              );
+            }}
             className="text-xs font-medium text-red-500 hover:text-red-700"
           >
             Delete
