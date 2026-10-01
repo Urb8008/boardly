@@ -22,18 +22,19 @@ export default function InviteClient({
 
   const [invite, setInvite] =
     useState<Invite | null>(null);
-
   const [loading, setLoading] =
     useState(true);
-
+  const [needsAuth, setNeedsAuth] =
+    useState(false);
   const [accepting, setAccepting] =
     useState(false);
-
   const [error, setError] =
     useState("");
-
   const [success, setSuccess] =
     useState("");
+
+  const invitePath =
+    `/protected/invites/${inviteId}`;
 
   useEffect(() => {
     loadInvite();
@@ -42,6 +43,7 @@ export default function InviteClient({
   async function loadInvite() {
     setLoading(true);
     setError("");
+    setNeedsAuth(false);
 
     const {
       data: { user },
@@ -49,15 +51,8 @@ export default function InviteClient({
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      const invitePath =
-        `/protected/invites/${inviteId}`;
-
-      router.replace(
-        `/auth/login?next=${encodeURIComponent(
-          invitePath
-        )}`
-      );
-
+      setNeedsAuth(true);
+      setLoading(false);
       return;
     }
 
@@ -76,7 +71,6 @@ export default function InviteClient({
       setError(
         "This invite could not be found, has already been accepted, or does not belong to this account."
       );
-
       setLoading(false);
       return;
     }
@@ -105,7 +99,6 @@ export default function InviteClient({
         error.message ||
           "Unable to accept invite."
       );
-
       setAccepting(false);
       return;
     }
@@ -133,14 +126,66 @@ export default function InviteClient({
     );
   }
 
+  if (needsAuth) {
+    const encodedNext =
+      encodeURIComponent(invitePath);
+
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-slate-900">
+              ToutchBase
+            </h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Board invitation
+            </p>
+          </div>
+
+          <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-sm leading-6 text-slate-600">
+              You have been invited to a ToutchBase board.
+              Sign in if you already have an account, or create
+              an account with the email address that received
+              this invitation.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push(
+                `/auth/login?next=${encodedNext}`
+              )
+            }
+            className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
+          >
+            Sign in
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push(
+                `/auth/sign-up?next=${encodedNext}`
+              )
+            }
+            className="mt-3 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
+          >
+            Create account
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-900">
-            Boardly
+            ToutchBase
           </h1>
-
           <p className="mt-2 text-sm text-slate-500">
             Board invitation
           </p>
@@ -151,7 +196,6 @@ export default function InviteClient({
             <div className="rounded-xl bg-red-50 p-4 text-sm leading-6 text-red-700">
               {error}
             </div>
-
             <button
               type="button"
               onClick={() =>
@@ -168,16 +212,13 @@ export default function InviteClient({
           <div className="mt-8">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
               <p className="text-sm text-slate-500">
-                You have been invited to
-                collaborate on a Boardly
-                board.
+                You have been invited to collaborate on a ToutchBase board.
               </p>
 
               <div className="mt-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                   Invite sent to
                 </p>
-
                 <p className="mt-1 break-all text-sm font-medium text-slate-800">
                   {invite.email}
                 </p>
@@ -187,7 +228,6 @@ export default function InviteClient({
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                   Role
                 </p>
-
                 <p className="mt-1 text-sm font-medium capitalize text-slate-800">
                   {invite.role}
                 </p>
@@ -202,9 +242,7 @@ export default function InviteClient({
 
             <button
               type="button"
-              onClick={
-                acceptInvite
-              }
+              onClick={acceptInvite}
               disabled={
                 accepting ||
                 Boolean(success)

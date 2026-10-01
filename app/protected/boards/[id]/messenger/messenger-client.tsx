@@ -25,6 +25,39 @@ type BoardMessage = {
   created_at: string;
 };
 
+type BoardCall = {
+  id: string;
+  board_id: number;
+  started_by: string;
+  started_by_email: string | null;
+  room_name: string;
+  active: boolean;
+  created_at: string;
+  ended_at: string | null;
+};
+
+type JitsiApi = {
+  dispose: () => void;
+};
+
+type JitsiConstructor = new (
+  domain: string,
+  options: {
+    roomName: string;
+    jwt: string;
+    parentNode: HTMLElement;
+    width: string;
+    height: number;
+    configOverwrite?: Record<string, unknown>;
+  }
+) => JitsiApi;
+
+declare global {
+  interface Window {
+    JitsiMeetExternalAPI?: JitsiConstructor;
+  }
+}
+
 export default function MessengerClient({
   boardId,
 }: {
@@ -89,8 +122,44 @@ export default function MessengerClient({
   ] =
     useState("");
 
+  const [
+    activeCall,
+    setActiveCall,
+  ] =
+    useState<BoardCall | null>(
+      null
+    );
+
+  const [
+    callOpen,
+    setCallOpen,
+  ] =
+    useState(false);
+
+  const [
+    callBusy,
+    setCallBusy,
+  ] =
+    useState(false);
+
+  const [
+    callError,
+    setCallError,
+  ] =
+    useState("");
+
   const messagesEndRef =
     useRef<HTMLDivElement | null>(
+      null
+    );
+
+  const videoContainerRef =
+    useRef<HTMLDivElement | null>(
+      null
+    );
+
+  const jitsiApiRef =
+    useRef<JitsiApi | null>(
       null
     );
 
@@ -118,9 +187,34 @@ export default function MessengerClient({
         )
         .subscribe();
 
+    const callChannel =
+      supabase
+        .channel(
+          `board-calls-${boardId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table:
+              "board_calls",
+            filter:
+              `board_id=eq.${boardId}`,
+          },
+          () => {
+            loadActiveCall();
+          }
+        )
+        .subscribe();
+
     return () => {
       supabase.removeChannel(
         channel
+      );
+
+      supabase.removeChannel(
+        callChannel
       );
     };
   }, [boardId]);
@@ -128,6 +222,107 @@ export default function MessengerClient({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (
+      !callOpen ||
+      !activeCall
+    ) {
+      disposeJitsi();
+      return;
+    }
+
+    let cancelled = false;
+
+    async function openJaasCall() {
+      setCallError("");
+
+      try {
+        const response =
+          await fetch(
+            "/api/jaas/token",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                boardId,
+                roomName:
+                  activeCall.room_name,
+              }),
+            }
+          );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ||
+              "Could not create video token."
+          );
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        await loadJaasScript(
+          result.appId
+        );
+
+        if (
+          cancelled ||
+          !videoContainerRef.current ||
+          !window.JitsiMeetExternalAPI
+        ) {
+          return;
+        }
+
+        disposeJitsi();
+
+        jitsiApiRef.current =
+          new window.JitsiMeetExternalAPI(
+            "8x8.vc",
+            {
+              roomName: `${result.appId}/${result.roomName}`,
+              jwt: result.token,
+              parentNode:
+                videoContainerRef.current,
+              width: "100%",
+              height: 620,
+              configOverwrite: {
+                prejoinPageEnabled:
+                  false,
+                disableDeepLinking:
+                  true,
+              },
+            }
+          );
+      } catch (error) {
+        if (!cancelled) {
+          setCallError(
+            error instanceof Error
+              ? error.message
+              : "Could not open video call."
+          );
+        }
+      }
+    }
+
+    openJaasCall();
+
+    return () => {
+      cancelled = true;
+      disposeJitsi();
+    };
+  }, [
+    callOpen,
+    activeCall?.id,
+    boardId,
+  ]);
 
   function scrollToBottom() {
     setTimeout(() => {
@@ -171,6 +366,7 @@ export default function MessengerClient({
     await Promise.all([
       loadBoard(),
       loadMessages(),
+      loadActiveCall(),
     ]);
 
     setLoading(false);
@@ -353,6 +549,330 @@ export default function MessengerClient({
     await loadMessages();
   }
 
+  async function loadActiveCall() {
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("board_calls")
+        .select("*")
+        .eq(
+          "board_id",
+          boardId
+        )
+        .eq(
+          "active",
+          true
+        )
+        .order(
+          "created_at",
+          {
+            ascending:
+              false,
+          }
+        )
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Error loading active call:",
+        error.message
+      );
+
+      return;
+    }
+
+    setActiveCall(
+      data || null
+    );
+
+    if (!data) {
+      setCallOpen(false);
+    }
+  }
+
+  async function postCallMessage(
+    message: string
+  ) {
+    const {
+      data: { user },
+    } =
+      await supabase.auth.getUser();
+
+    if (!user) {
+      return;
+    }
+
+    const { error } =
+      await supabase
+        .from(
+          "board_messages"
+        )
+        .insert({
+          board_id:
+            boardId,
+          user_id:
+            user.id,
+          sender_email:
+            user.email ||
+            null,
+          message,
+        });
+
+    if (error) {
+      console.error(
+        "Unable to post call message:",
+        error.message
+      );
+    }
+  }
+
+  function makeRoomName() {
+    return `toutchbase-${boardId}-${crypto.randomUUID()}`;
+  }
+
+  async function startVideoCall() {
+    setCallBusy(true);
+    setCallError("");
+
+    const {
+      data: { user },
+      error: userError,
+    } =
+      await supabase.auth.getUser();
+
+    if (
+      userError ||
+      !user
+    ) {
+      router.push(
+        "/auth/login"
+      );
+
+      setCallBusy(false);
+      return;
+    }
+
+    const {
+      data: existingCall,
+    } =
+      await supabase
+        .from("board_calls")
+        .select("*")
+        .eq(
+          "board_id",
+          boardId
+        )
+        .eq(
+          "active",
+          true
+        )
+        .limit(1)
+        .maybeSingle();
+
+    if (existingCall) {
+      setActiveCall(
+        existingCall
+      );
+      setCallOpen(true);
+      setCallBusy(false);
+      return;
+    }
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("board_calls")
+        .insert({
+          board_id:
+            boardId,
+          started_by:
+            user.id,
+          started_by_email:
+            user.email ||
+            null,
+          room_name:
+            makeRoomName(),
+          active: true,
+        })
+        .select()
+        .single();
+
+    if (error) {
+      setCallError(
+        error.message
+      );
+
+      await loadActiveCall();
+
+      setCallBusy(false);
+      return;
+    }
+
+    setActiveCall(
+      data
+    );
+    setCallOpen(true);
+
+    await postCallMessage(
+      "🎥 Video call started. Open Messenger and select Join call."
+    );
+
+    setCallBusy(false);
+  }
+
+  function joinVideoCall() {
+    if (!activeCall) {
+      return;
+    }
+
+    setCallOpen(true);
+  }
+
+  async function endVideoCall() {
+    if (!activeCall) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        "End this video call for everyone?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setCallBusy(true);
+    setCallError("");
+
+    const {
+      error,
+    } =
+      await supabase
+        .from("board_calls")
+        .update({
+          active: false,
+          ended_at:
+            new Date().toISOString(),
+        })
+        .eq(
+          "id",
+          activeCall.id
+        );
+
+    if (error) {
+      setCallError(
+        error.message
+      );
+      setCallBusy(false);
+      return;
+    }
+
+    await postCallMessage(
+      "📴 Video call ended."
+    );
+
+    disposeJitsi();
+    setActiveCall(null);
+    setCallOpen(false);
+    setCallBusy(false);
+  }
+
+  function closeVideoPanel() {
+    disposeJitsi();
+    setCallOpen(false);
+  }
+
+  function disposeJitsi() {
+    if (jitsiApiRef.current) {
+      jitsiApiRef.current.dispose();
+      jitsiApiRef.current = null;
+    }
+
+    if (videoContainerRef.current) {
+      videoContainerRef.current.innerHTML =
+        "";
+    }
+  }
+
+  async function loadJaasScript(
+    appId: string
+  ) {
+    if (window.JitsiMeetExternalAPI) {
+      return;
+    }
+
+    const scriptId =
+      "jaas-external-api";
+
+    const existing =
+      document.getElementById(
+        scriptId
+      ) as HTMLScriptElement | null;
+
+    if (existing) {
+      await new Promise<void>(
+        (resolve, reject) => {
+          if (
+            window.JitsiMeetExternalAPI
+          ) {
+            resolve();
+            return;
+          }
+
+          existing.addEventListener(
+            "load",
+            () => resolve(),
+            { once: true }
+          );
+
+          existing.addEventListener(
+            "error",
+            () =>
+              reject(
+                new Error(
+                  "Could not load JaaS."
+                )
+              ),
+            { once: true }
+          );
+        }
+      );
+
+      return;
+    }
+
+    await new Promise<void>(
+      (resolve, reject) => {
+        const script =
+          document.createElement(
+            "script"
+          );
+
+        script.id = scriptId;
+        script.src = `https://8x8.vc/${appId}/external_api.js`;
+        script.async = true;
+        script.onload = () =>
+          resolve();
+        script.onerror = () =>
+          reject(
+            new Error(
+              "Could not load JaaS."
+            )
+          );
+
+        document.body.appendChild(
+          script
+        );
+      }
+    );
+  }
+
   function formatMessageTime(
     createdAt: string
   ) {
@@ -438,6 +958,33 @@ export default function MessengerClient({
             >
               Calendar
             </button>
+
+            {activeCall ? (
+              <button
+                type="button"
+                onClick={
+                  joinVideoCall
+                }
+                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+              >
+                🎥 Join call
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={
+                  startVideoCall
+                }
+                disabled={
+                  callBusy
+                }
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {callBusy
+                  ? "Starting..."
+                  : "🎥 Start call"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -466,6 +1013,90 @@ export default function MessengerClient({
             · Team conversation
           </p>
         </div>
+
+        {callError && (
+          <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+            {callError}
+          </div>
+        )}
+
+        {activeCall && (
+          <div className="mb-5 overflow-hidden rounded-2xl border border-green-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-green-50 px-5 py-4">
+              <div>
+                <p className="font-semibold text-green-900">
+                  🎥 Video call active
+                </p>
+
+                <p className="mt-1 text-xs text-green-700">
+                  Started by{" "}
+                  {getDisplayName(
+                    activeCall.started_by_email
+                  )}
+                  {" · "}
+                  {formatMessageTime(
+                    activeCall.created_at
+                  )}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {!callOpen && (
+                  <button
+                    type="button"
+                    onClick={
+                      joinVideoCall
+                    }
+                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+                  >
+                    Join call
+                  </button>
+                )}
+
+                {callOpen && (
+                  <button
+                    type="button"
+                    onClick={
+                      closeVideoPanel
+                    }
+                    className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+                  >
+                    Hide video
+                  </button>
+                )}
+
+                {(activeCall.started_by ===
+                  currentUserId ||
+                  board?.user_id ===
+                    currentUserId) && (
+                  <button
+                    type="button"
+                    onClick={
+                      endVideoCall
+                    }
+                    disabled={
+                      callBusy
+                    }
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    End call
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {callOpen && (
+              <div className="bg-slate-950 p-2">
+                <div
+                  ref={
+                    videoContainerRef
+                  }
+                  className="min-h-[620px] w-full overflow-hidden rounded-xl bg-black"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex min-h-[650px] flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
