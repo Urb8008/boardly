@@ -364,7 +364,8 @@ export default function PreferencesPage() {
             onClick={() =>
               router.back()
             }
-            className="mb-4 inline-flex items-center rounded-xl border border-white/70 bg-white/95 px-4 py-2.5 text-base font-bold text-slate-900 shadow-md backdrop-blur transition hover:bg-white hover:shadow-lg"
+            className="mb-4 inline-flex items-center rounded-xl border border-white/30 px-4 py-2.5 text-base font-bold text-white shadow-md transition hover:brightness-110 hover:shadow-lg"
+            style={{ backgroundColor: selectedTab?.color || "#475569" }}
           >
             ← Back
           </button>
