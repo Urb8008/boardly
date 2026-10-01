@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import { WALLPAPER_OPTIONS } from "@/lib/preferences/options";
 
 type Board = {
   id: number;
@@ -45,6 +46,57 @@ type CalendarItem = {
   description?: string | null;
   status?: string;
   eventId?: number;
+};
+
+type Wallpaper = string;
+
+type AccentColor =
+  | "blue"
+  | "purple"
+  | "green"
+  | "orange"
+  | "pink";
+
+type TabColor =
+  | "slate"
+  | "blue"
+  | "green"
+  | "amber"
+  | "rose";
+
+type UserPreferences = {
+  wallpaper: Wallpaper;
+  accent_color: AccentColor;
+  tab_color: TabColor;
+};
+
+const WALLPAPER_STYLES: Record<string, string> = {
+  default:
+    "linear-gradient(135deg, #f8fafc, #e2e8f0)",
+  ocean:
+    "linear-gradient(135deg, #0ea5e9, #1e3a8a)",
+  forest:
+    "linear-gradient(135deg, #15803d, #052e16)",
+  sunset:
+    "linear-gradient(135deg, #fb7185, #f97316, #7c3aed)",
+  midnight:
+    "linear-gradient(135deg, #0f172a, #312e81)",
+};
+
+const ACCENT_COLORS: Record<AccentColor, string> = {
+  blue: "#2563eb",
+  purple: "#7c3aed",
+  green: "#16a34a",
+  orange: "#ea580c",
+  pink: "#db2777",
+};
+
+const TAB_COLORS: Record<TabColor, string> = {
+  slate: "#475569",
+  blue: "#2563eb",
+  green: "#16a34a",
+  amber: "#d97706",
+  rose: "#e11d48",
 };
 
 function getDateKey(
@@ -185,6 +237,56 @@ export default function CalendarClient({
     setErrorMessage,
   ] = useState("");
 
+  const [
+    preferences,
+    setPreferences,
+  ] = useState<UserPreferences>({
+    wallpaper: "default",
+    accent_color: "blue",
+    tab_color: "slate",
+  });
+
+  const natureWallpaper =
+    WALLPAPER_OPTIONS.find(
+      (option) =>
+        option.id === preferences.wallpaper
+    );
+
+  const wallpaperStyle: React.CSSProperties =
+    natureWallpaper
+      ? {
+          backgroundImage: `linear-gradient(
+            rgba(248, 250, 252, 0.30),
+            rgba(248, 250, 252, 0.30)
+          ), url("${natureWallpaper.image}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+          backgroundColor: "#e2e8f0",
+        }
+      : {
+          backgroundImage:
+            WALLPAPER_STYLES[
+              preferences.wallpaper
+            ] ||
+            WALLPAPER_STYLES.default,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+        };
+
+  const accentColor =
+    ACCENT_COLORS[
+      preferences.accent_color
+    ];
+
+  const tabColor =
+    TAB_COLORS[
+      preferences.tab_color
+    ];
+
   useEffect(() => {
     initializeCalendar();
   }, []);
@@ -218,9 +320,43 @@ export default function CalendarClient({
       loadBoard(),
       loadCards(),
       loadCalendarEvents(),
+      loadPreferences(user.id),
     ]);
 
     setLoading(false);
+  }
+
+  async function loadPreferences(
+    userId: string
+  ) {
+    const { data, error } =
+      await supabase
+        .from("user_preferences")
+        .select(
+          "wallpaper, accent_color, tab_color"
+        )
+        .eq("user_id", userId)
+        .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Error loading preferences:",
+        error.message
+      );
+
+      return;
+    }
+
+    if (!data) return;
+
+    setPreferences({
+      wallpaper:
+        data.wallpaper as Wallpaper,
+      accent_color:
+        data.accent_color as AccentColor,
+      tab_color:
+        data.tab_color as TabColor,
+    });
   }
 
   async function loadBoard() {
@@ -847,7 +983,10 @@ export default function CalendarClient({
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-100 p-8">
+      <main
+        className="min-h-screen p-8"
+        style={wallpaperStyle}
+      >
         <div className="mx-auto max-w-7xl animate-pulse">
           <div className="h-10 w-64 rounded bg-slate-300" />
 
@@ -858,8 +997,11 @@ export default function CalendarClient({
   }
 
   return (
-    <main className="min-h-screen bg-slate-100">
-      <div className="border-b border-slate-200 bg-white">
+    <main
+      className="min-h-screen"
+      style={wallpaperStyle}
+    >
+      <div className="border-b border-white/40 bg-white/88 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <button
             type="button"
@@ -881,7 +1023,8 @@ export default function CalendarClient({
                   `/protected/boards/${boardId}`
                 )
               }
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:brightness-95"
+              style={{ backgroundColor: tabColor }}
             >
               Board
             </button>
@@ -893,7 +1036,8 @@ export default function CalendarClient({
                   "/protected/boards"
                 )
               }
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:brightness-95"
+              style={{ backgroundColor: tabColor }}
             >
               All boards
             </button>
@@ -933,14 +1077,15 @@ export default function CalendarClient({
             onClick={() =>
               openAddEvent()
             }
-            className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+            className="rounded-xl px-5 py-3 text-sm font-semibold text-white transition hover:brightness-95"
+            style={{ backgroundColor: accentColor }}
           >
             + Add event
           </button>
         </div>
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_320px]">
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-3xl border border-white/50 bg-white/78 shadow-xl backdrop-blur-md">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5">
               <div className="flex items-center gap-2">
                 <button
@@ -981,7 +1126,7 @@ export default function CalendarClient({
               </h2>
             </div>
 
-            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+            <div className="grid grid-cols-7 border-b border-slate-200/80 bg-white/72">
               {[
                 "Sun",
                 "Mon",
@@ -1037,8 +1182,8 @@ export default function CalendarClient({
                       }
                       className={`min-h-32 border-b border-r border-slate-200 p-2 text-left transition ${
                         day.isCurrentMonth
-                          ? "bg-white"
-                          : "bg-slate-50"
+                          ? "bg-white/72"
+                          : "bg-slate-100/60"
                       } ${
                         isSelected
                           ? "ring-2 ring-inset ring-blue-500"
@@ -1108,7 +1253,7 @@ export default function CalendarClient({
             </div>
           </div>
 
-          <aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <aside className="rounded-3xl border border-white/50 bg-white/78 p-5 shadow-xl backdrop-blur-md">
             <div className="flex items-center justify-between">
               <h2 className="font-bold text-slate-900">
                 {selectedDate
