@@ -51,6 +51,7 @@ type AccentColor =
 type UserPreferences = {
   wallpaper: Wallpaper;
   accent_color: AccentColor;
+  panel_opacity: number;
 };
 
 const WALLPAPER_STYLES: Record<string, string> = {
@@ -131,6 +132,7 @@ export default function BoardsPage() {
     useState<UserPreferences>({
       wallpaper: "default",
       accent_color: "blue",
+      panel_opacity: 50,
     });
 
   const natureWallpaper =
@@ -163,6 +165,18 @@ export default function BoardsPage() {
 
   const accentColor =
     ACCENT_COLORS[preferences.accent_color];
+
+  const panelAlpha =
+    0.12 +
+    (Math.min(
+      100,
+      Math.max(0, preferences.panel_opacity)
+    ) /
+      100) *
+      0.7;
+
+  const panelBackgroundColor =
+    `rgba(255, 255, 255, ${panelAlpha})`;
 
   useEffect(() => {
     initializeDashboard();
@@ -205,7 +219,7 @@ export default function BoardsPage() {
   async function loadPreferences(userId: string) {
     const { data, error } = await supabase
       .from("user_preferences")
-      .select("wallpaper, accent_color")
+      .select("wallpaper, accent_color, panel_opacity")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -225,6 +239,11 @@ export default function BoardsPage() {
 
       accent_color:
         (data.accent_color as AccentColor) || "blue",
+
+      panel_opacity:
+        typeof data.panel_opacity === "number"
+          ? data.panel_opacity
+          : 50,
     });
   }
 
@@ -902,7 +921,12 @@ export default function BoardsPage() {
         {/* PAGE CONTENT */}
 
         <div className="mx-auto max-w-7xl p-6 sm:p-8">
-          <div className="rounded-3xl border border-white/40 bg-slate-100/42 p-6 shadow-xl backdrop-blur-md sm:p-8">
+          <div
+            className="rounded-3xl border border-white/40 p-6 shadow-xl backdrop-blur-md sm:p-8"
+            style={{
+              backgroundColor: panelBackgroundColor,
+            }}
+          >
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900">
@@ -930,7 +954,12 @@ export default function BoardsPage() {
             </div>
 
             {boards.length === 0 ? (
-              <div className="mt-10 rounded-2xl border border-dashed border-white/45 bg-slate-100/50 p-10 text-center shadow-sm backdrop-blur-md">
+              <div
+                className="mt-10 rounded-2xl border border-dashed border-white/45 p-10 text-center shadow-sm backdrop-blur-md"
+                style={{
+                  backgroundColor: panelBackgroundColor,
+                }}
+              >
                 <div
                   className="mx-auto flex h-12 w-12 items-center justify-center rounded-full text-2xl text-white"
                   style={{
@@ -988,7 +1017,10 @@ export default function BoardsPage() {
                   return (
                     <div
                       key={board.id}
-                      className="group overflow-hidden rounded-2xl border border-white/45 bg-slate-100/58 shadow-md backdrop-blur-md transition hover:-translate-y-1 hover:bg-slate-100/68 hover:shadow-xl"
+                      className="group overflow-hidden rounded-2xl border border-white/45 shadow-md backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl"
+                      style={{
+                        backgroundColor: panelBackgroundColor,
+                      }}
                     >
                       <button
                         type="button"
