@@ -247,6 +247,9 @@ export default function PreferencesPage() {
   const [tabColor, setTabColor] =
     useState<TabColor>("slate");
 
+  const [panelOpacity, setPanelOpacity] =
+    useState(50);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -285,7 +288,7 @@ export default function PreferencesPage() {
     } = await supabase
       .from("user_preferences")
       .select(
-        "wallpaper, accent_color, tab_color"
+        "wallpaper, accent_color, tab_color, panel_opacity"
       )
       .eq("user_id", user.id)
       .maybeSingle();
@@ -311,6 +314,12 @@ export default function PreferencesPage() {
 
       setTabColor(
         data.tab_color as TabColor
+      );
+
+      setPanelOpacity(
+        typeof data.panel_opacity === "number"
+          ? data.panel_opacity
+          : 50
       );
     }
 
@@ -347,6 +356,8 @@ export default function PreferencesPage() {
               accentColor,
             tab_color:
               tabColor,
+            panel_opacity:
+              panelOpacity,
             updated_at:
               new Date().toISOString(),
           },
@@ -592,6 +603,62 @@ export default function PreferencesPage() {
                   );
                 }
               )}
+            </div>
+          </section>
+
+          {/* PANEL READABILITY */}
+
+          <section className="rounded-2xl border border-white/50 bg-white/82 p-6 shadow-xl backdrop-blur-md">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">
+                  Panel readability
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Adjust how much white appears behind the main glass panels.
+                </p>
+              </div>
+
+              <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                {panelOpacity}%
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={panelOpacity}
+                onChange={(event) =>
+                  setPanelOpacity(Number(event.target.value))
+                }
+                className="w-full cursor-pointer"
+              />
+
+              <div className="mt-2 flex justify-between text-xs font-medium text-slate-500">
+                <span>Transparent</span>
+                <span>Faded white</span>
+              </div>
+            </div>
+
+            <div
+              className="mt-6 rounded-2xl border border-white/60 p-5 shadow-sm backdrop-blur-md"
+              style={{
+                backgroundColor: `rgba(255, 255, 255, ${
+                  0.12 + (panelOpacity / 100) * 0.7
+                })`,
+              }}
+            >
+              <p className="font-semibold text-slate-900">
+                Readability preview
+              </p>
+
+              <p className="mt-1 text-sm text-slate-700">
+                Move the slider to make glass panels clearer or more transparent.
+              </p>
             </div>
           </section>
 
