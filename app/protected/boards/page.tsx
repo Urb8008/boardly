@@ -860,7 +860,7 @@ export default function BoardsPage() {
               }
               className="text-lg font-bold text-slate-900"
             >
-              TouchBase
+              ToutchBase
             </button>
 
             <div className="flex items-center gap-3">
@@ -1039,18 +1039,51 @@ export default function BoardsPage() {
                         </p>
 
                         <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                          <span
+                            className={`rounded-full px-2.5 py-1 ${
+                              stats.todo > 0
+                                ? "font-semibold text-white shadow-sm"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                            style={
+                              stats.todo > 0
+                                ? { backgroundColor: accentColor }
+                                : undefined
+                            }
+                          >
                             {stats.todo} To Do
                           </span>
 
-                          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">
+                          <span
+                            className={`rounded-full px-2.5 py-1 ${
+                              stats.inProgress > 0
+                                ? "font-semibold text-white shadow-sm"
+                                : "bg-blue-50 text-blue-700"
+                            }`}
+                            style={
+                              stats.inProgress > 0
+                                ? { backgroundColor: accentColor }
+                                : undefined
+                            }
+                          >
                             {
                               stats.inProgress
                             }{" "}
                             In Progress
                           </span>
 
-                          <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-700">
+                          <span
+                            className={`rounded-full px-2.5 py-1 ${
+                              stats.done > 0
+                                ? "font-semibold text-white shadow-sm"
+                                : "bg-green-50 text-green-700"
+                            }`}
+                            style={
+                              stats.done > 0
+                                ? { backgroundColor: accentColor }
+                                : undefined
+                            }
+                          >
                             {stats.done} Done
                           </span>
                         </div>

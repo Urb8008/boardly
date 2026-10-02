@@ -367,6 +367,16 @@ export default function BoardClient({
     setIsUploadingAttachments,
   ] = useState(false);
 
+  const [
+    isSavingCard,
+    setIsSavingCard,
+  ] = useState(false);
+
+  const [
+    cardSaveError,
+    setCardSaveError,
+  ] = useState("");
+
   const attachmentInputRef =
     useRef<HTMLInputElement | null>(null);
 
@@ -1086,6 +1096,7 @@ export default function BoardClient({
     status: CardStatus
   ) {
     setEditingCard(null);
+    setCardSaveError("");
 
     setCardTitle("");
     setCardDescription("");
@@ -1117,6 +1128,7 @@ export default function BoardClient({
     card: Card
   ) {
     setEditingCard(card);
+    setCardSaveError("");
 
     setCardTitle(card.title);
 
@@ -1203,8 +1215,11 @@ export default function BoardClient({
   }
 
   function closeCardModal() {
+    if (isSavingCard) return;
+
     setIsCardModalOpen(false);
     setEditingCard(null);
+    setCardSaveError("");
 
     setCardTitle("");
     setCardDescription("");
@@ -2112,20 +2127,36 @@ export default function BoardClient({
   // -----------------------------------
 
   async function saveCard() {
+    if (isSavingCard) return;
+
     const trimmedTitle =
       cardTitle.trim();
 
     const trimmedDescription =
       cardDescription.trim();
 
-    if (!trimmedTitle) return;
+    setCardSaveError("");
 
-    const user =
-      await getCurrentUser();
+    if (!trimmedTitle) {
+      setCardSaveError(
+        "Please enter a card title."
+      );
+      return;
+    }
 
-    if (!user) return;
+    setIsSavingCard(true);
 
     try {
+      const user =
+        await getCurrentUser();
+
+      if (!user) {
+        setCardSaveError(
+          "Your session could not be confirmed. Please refresh the page and try again."
+        );
+        return;
+      }
+
       if (editingCard) {
         const { error } =
           await supabase
@@ -2142,6 +2173,8 @@ export default function BoardClient({
               priority:
                 cardPriority ||
                 null,
+              status:
+                newCardStatus,
             })
             .eq(
               "id",
@@ -2175,6 +2208,7 @@ export default function BoardClient({
 
         await loadCards();
 
+        setIsSavingCard(false);
         closeCardModal();
 
         return;
@@ -2186,6 +2220,16 @@ export default function BoardClient({
             card.status ===
             newCardStatus
         );
+
+      const nextPosition =
+        cardsInColumn.length === 0
+          ? 1
+          : Math.max(
+              ...cardsInColumn.map(
+                (card) =>
+                  card.position || 0
+              )
+            ) + 1;
 
       const {
         data,
@@ -2207,8 +2251,7 @@ export default function BoardClient({
           status:
             newCardStatus,
           position:
-            cardsInColumn.length +
-            1,
+            nextPosition,
           user_id:
             user.id,
           board_id:
@@ -2220,6 +2263,12 @@ export default function BoardClient({
       if (error) {
         throw new Error(
           error.message
+        );
+      }
+
+      if (!data) {
+        throw new Error(
+          "The card was not returned after saving."
         );
       }
 
@@ -2240,6 +2289,7 @@ export default function BoardClient({
 
       await loadCards();
 
+      setIsSavingCard(false);
       closeCardModal();
     } catch (error) {
       const message =
@@ -2247,9 +2297,11 @@ export default function BoardClient({
           ? error.message
           : "Unknown error";
 
-      alert(
-        `Error saving card: ${message}`
+      setCardSaveError(
+        `Could not save card: ${message}`
       );
+    } finally {
+      setIsSavingCard(false);
     }
   }
 
@@ -3504,8 +3556,8 @@ export default function BoardClient({
       {/* CARD MODAL */}
 
       {isCardModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center">
-          <div className="my-8 w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-3 sm:p-4">
+          <div className="my-3 max-h-[calc(100vh-24px)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:my-4 sm:max-h-[calc(100vh-32px)] sm:p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-slate-900">
                 {editingCard
@@ -4305,13 +4357,22 @@ export default function BoardClient({
               </div>
             )}
 
+            {cardSaveError && (
+              <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {cardSaveError}
+              </div>
+            )}
+
             <div className="mt-8 flex justify-end gap-3 border-t border-slate-200 pt-5">
               <button
                 type="button"
                 onClick={
                   closeCardModal
                 }
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                disabled={
+                  isSavingCard
+                }
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -4320,7 +4381,8 @@ export default function BoardClient({
                 type="button"
                 onClick={saveCard}
                 disabled={
-                  isUploadingAttachments
+                  isUploadingAttachments ||
+                  isSavingCard
                 }
                 className="rounded-lg px-5 py-2 text-sm font-medium text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
                 style={{
@@ -4330,9 +4392,11 @@ export default function BoardClient({
               >
                 {isUploadingAttachments
                   ? "Uploading files..."
-                  : editingCard
-                    ? "Save changes"
-                    : "Add card"}
+                  : isSavingCard
+                    ? "Saving..."
+                    : editingCard
+                      ? "Save changes"
+                      : "Add card"}
               </button>
             </div>
           </div>
