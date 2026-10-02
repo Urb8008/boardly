@@ -2625,6 +2625,52 @@ export default function BoardClient({
     }
   }
 
+  function getPriorityModalStyle(
+    priority: Priority
+  ) {
+    switch (priority) {
+      case "low":
+        return {
+          background:
+            "rgba(148, 163, 184, 0.74)",
+          borderColor:
+            "rgba(148, 163, 184, 0.88)",
+        };
+
+      case "medium":
+        return {
+          background:
+            "rgba(59, 130, 246, 0.68)",
+          borderColor:
+            "rgba(59, 130, 246, 0.88)",
+        };
+
+      case "high":
+        return {
+          background:
+            "rgba(249, 115, 22, 0.68)",
+          borderColor:
+            "rgba(249, 115, 22, 0.90)",
+        };
+
+      case "urgent":
+        return {
+          background:
+            "rgba(239, 68, 68, 0.66)",
+          borderColor:
+            "rgba(239, 68, 68, 0.92)",
+        };
+
+      default:
+        return {
+          background:
+            "rgba(255, 255, 255, 0.74)",
+          borderColor:
+            "rgba(255, 255, 255, 0.82)",
+        };
+    }
+  }
+
   function getPriorityLabel(
     priority: Priority
   ) {
@@ -3013,6 +3059,11 @@ export default function BoardClient({
       </main>
     );
   }
+
+  const modalPriorityStyle =
+    getPriorityModalStyle(
+      cardPriority
+    );
 
   const modalCompleted =
     modalChecklistItems.filter(
@@ -3557,7 +3608,7 @@ export default function BoardClient({
                   }
                 }}
                 placeholder="person@example.com"
-                className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="mt-2 w-full rounded-xl border border-white/55 bg-white/72 px-4 py-3 text-slate-900 shadow-sm backdrop-blur-md outline-none transition placeholder:text-slate-500 focus:border-white/90 focus:ring-2 focus:ring-white/35"
               />
 
               {inviteError && (
@@ -3614,7 +3665,15 @@ export default function BoardClient({
 
       {isCardModalOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-3 sm:p-4">
-          <div className="my-3 max-h-[calc(100vh-24px)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:my-4 sm:max-h-[calc(100vh-32px)] sm:p-6">
+          <div
+            className="my-3 max-h-[calc(100vh-24px)] w-full max-w-2xl overflow-y-auto rounded-2xl border p-5 shadow-2xl backdrop-blur-xl sm:my-4 sm:max-h-[calc(100vh-32px)] sm:p-6"
+            style={{
+              background:
+                modalPriorityStyle.background,
+              borderColor:
+                modalPriorityStyle.borderColor,
+            }}
+          >
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-slate-900">
                 {editingCard
@@ -3627,7 +3686,7 @@ export default function BoardClient({
                 onClick={
                   closeCardModal
                 }
-                className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg bg-white/35 px-3 py-1 text-slate-700 backdrop-blur transition hover:bg-white/55"
               >
                 ✕
               </button>
@@ -3646,7 +3705,7 @@ export default function BoardClient({
                 )
               }
               placeholder="Enter a task..."
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="mt-2 w-full rounded-xl border border-white/55 bg-white/72 px-4 py-3 text-slate-900 shadow-sm backdrop-blur-md outline-none transition placeholder:text-slate-500 focus:border-white/90 focus:ring-2 focus:ring-white/35"
             />
 
             <label className="mt-5 block text-sm font-medium text-slate-700">
@@ -3664,7 +3723,7 @@ export default function BoardClient({
               }
               placeholder="Add more details..."
               rows={4}
-              className="mt-2 w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="mt-2 w-full resize-none rounded-xl border border-white/55 bg-white/72 px-4 py-3 text-slate-900 shadow-sm backdrop-blur-md outline-none transition placeholder:text-slate-500 focus:border-white/90 focus:ring-2 focus:ring-white/35"
             />
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -3685,7 +3744,7 @@ export default function BoardClient({
                       event.target.value
                     )
                   }
-                  className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className="mt-2 w-full rounded-xl border border-white/55 bg-white/72 px-4 py-3 text-slate-900 shadow-sm backdrop-blur-md outline-none transition placeholder:text-slate-500 focus:border-white/90 focus:ring-2 focus:ring-white/35"
                 />
               </div>
 
@@ -3708,7 +3767,7 @@ export default function BoardClient({
                         null) as Priority
                     )
                   }
-                  className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className="mt-2 w-full rounded-xl border border-white/55 bg-white/72 px-4 py-3 text-slate-900 shadow-sm backdrop-blur-md outline-none transition placeholder:text-slate-500 focus:border-white/90 focus:ring-2 focus:ring-white/35"
                 >
                   <option value="">
                     No priority
@@ -3751,7 +3810,7 @@ export default function BoardClient({
                         .value as CardStatus
                     )
                   }
-                  className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none"
+                  className="mt-2 w-full rounded-xl border border-white/55 bg-white/72 px-4 py-3 text-slate-900 shadow-sm backdrop-blur-md outline-none"
                 >
                   <option value="todo">
                     To Do
@@ -3768,7 +3827,7 @@ export default function BoardClient({
               </>
             )}
 
-            <div className="mt-8 border-t border-slate-200 pt-6">
+            <div className="mt-8 border-t border-white/35 pt-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-slate-900">
@@ -3987,7 +4046,7 @@ export default function BoardClient({
               )}
             </div>
 
-            <div className="mt-8 border-t border-slate-200 pt-6">
+            <div className="mt-8 border-t border-white/35 pt-6">
               <div>
                 <h3 className="font-semibold text-slate-900">
                   Links
@@ -4176,7 +4235,7 @@ export default function BoardClient({
               )}
             </div>
 
-            <div className="mt-8 border-t border-slate-200 pt-6">
+            <div className="mt-8 border-t border-white/35 pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-slate-900">
@@ -4317,7 +4376,7 @@ export default function BoardClient({
             </div>
 
             {editingCard && (
-              <div className="mt-8 border-t border-slate-200 pt-6">
+              <div className="mt-8 border-t border-white/35 pt-6">
                 <div>
                   <h3 className="font-semibold text-slate-900">
                     Comments
@@ -4420,7 +4479,7 @@ export default function BoardClient({
               </div>
             )}
 
-            <div className="mt-8 flex justify-end gap-3 border-t border-slate-200 pt-5">
+            <div className="mt-8 flex justify-end gap-3 border-t border-white/35 pt-5">
               <button
                 type="button"
                 onClick={
