@@ -2579,6 +2579,52 @@ export default function BoardClient({
     }
   }
 
+  function getPriorityCardStyle(
+    priority: Priority
+  ) {
+    switch (priority) {
+      case "low":
+        return {
+          background:
+            "rgba(148, 163, 184, 0.22)",
+          borderColor:
+            "rgba(148, 163, 184, 0.55)",
+        };
+
+      case "medium":
+        return {
+          background:
+            "rgba(59, 130, 246, 0.20)",
+          borderColor:
+            "rgba(59, 130, 246, 0.55)",
+        };
+
+      case "high":
+        return {
+          background:
+            "rgba(249, 115, 22, 0.22)",
+          borderColor:
+            "rgba(249, 115, 22, 0.58)",
+        };
+
+      case "urgent":
+        return {
+          background:
+            "rgba(239, 68, 68, 0.24)",
+          borderColor:
+            "rgba(239, 68, 68, 0.62)",
+        };
+
+      default:
+        return {
+          background:
+            "rgba(255, 255, 255, 0.24)",
+          borderColor:
+            "rgba(255, 255, 255, 0.50)",
+        };
+    }
+  }
+
   function getPriorityLabel(
     priority: Priority
   ) {
@@ -2671,6 +2717,11 @@ export default function BoardClient({
         card.id
       );
 
+    const priorityCardStyle =
+      getPriorityCardStyle(
+        card.priority
+      );
+
     return (
       <div
         key={card.id}
@@ -2721,7 +2772,13 @@ export default function BoardClient({
             card.id
           )
         }
-        className="group cursor-pointer rounded-xl border border-white/50 bg-white/72 p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:bg-white/82 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
+        className="group cursor-pointer rounded-xl border p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:brightness-110 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
+        style={{
+          background:
+            priorityCardStyle.background,
+          borderColor:
+            priorityCardStyle.borderColor,
+        }}
       >
         <div className="flex items-start justify-between gap-3">
           <p className="font-medium leading-6 text-slate-800">
