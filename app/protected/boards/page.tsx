@@ -860,7 +860,7 @@ export default function BoardsPage() {
               }
               className="text-lg font-bold text-slate-900"
             >
-              ToutchBase
+              TouchBase
             </button>
 
             <div className="flex items-center gap-3">
