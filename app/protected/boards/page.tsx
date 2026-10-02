@@ -1026,9 +1026,7 @@ export default function BoardsPage() {
                             </h2>
                           </div>
 
-                          <span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-600">
-                            â†’
-                          </span>
+                          
                         </div>
 
                         <p className="mt-5 text-sm font-medium text-slate-700">
