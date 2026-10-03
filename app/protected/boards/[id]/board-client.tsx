@@ -127,6 +127,7 @@ type UserPreferences = {
   wallpaper: Wallpaper;
   accent_color: AccentColor;
   tab_color: TabColor;
+  panel_opacity: number;
 };
 
 const WALLPAPER_STYLES: Record<
@@ -435,6 +436,7 @@ export default function BoardClient({
     wallpaper: "default",
     accent_color: "blue",
     tab_color: "slate",
+    panel_opacity: 50,
   });
 
   const isOwner =
@@ -456,6 +458,21 @@ export default function BoardClient({
     TAB_COLORS[
       preferences.tab_color
     ];
+
+  const panelAlpha =
+    0.12 +
+    (Math.min(
+      100,
+      Math.max(
+        0,
+        preferences.panel_opacity
+      )
+    ) /
+      100) *
+      0.7;
+
+  const panelBackgroundColor =
+    `rgba(255, 255, 255, ${panelAlpha})`;
 
   useEffect(() => {
     initializeBoard();
@@ -505,7 +522,7 @@ export default function BoardClient({
       await supabase
         .from("user_preferences")
         .select(
-          "wallpaper, accent_color, tab_color"
+          "wallpaper, accent_color, tab_color, panel_opacity"
         )
         .eq("user_id", userId)
         .maybeSingle();
@@ -528,6 +545,10 @@ export default function BoardClient({
         data.accent_color as AccentColor,
       tab_color:
         data.tab_color as TabColor,
+      panel_opacity:
+        typeof data.panel_opacity === "number"
+          ? data.panel_opacity
+          : 50,
     });
   }
 
@@ -2972,7 +2993,11 @@ export default function BoardClient({
             status
           )
         }
-        className="flex min-h-[420px] w-80 flex-col rounded-2xl border border-white/50 bg-white/64 p-4 shadow-lg backdrop-blur-md"
+        className="flex min-h-[420px] w-80 flex-col rounded-2xl border border-white/50 p-4 shadow-lg backdrop-blur-md"
+        style={{
+          backgroundColor:
+            panelBackgroundColor,
+        }}
       >
         <div
           className="flex items-center justify-between rounded-xl px-3 py-3 text-white"
@@ -3167,7 +3192,13 @@ export default function BoardClient({
         </div>
 
         <div className="mx-auto max-w-7xl p-8">
-          <div className="rounded-3xl border border-white/40 bg-white/58 p-6 shadow-xl backdrop-blur-md">
+          <div
+            className="rounded-3xl border border-white/40 p-6 shadow-xl backdrop-blur-md"
+            style={{
+              backgroundColor:
+                panelBackgroundColor,
+            }}
+          >
             <button
               type="button"
               onClick={() =>
@@ -3236,7 +3267,13 @@ export default function BoardClient({
               )}
             </div>
 
-            <div className="mt-6 rounded-2xl border border-white/50 bg-white/58 p-4 backdrop-blur-md">
+            <div
+              className="mt-6 rounded-2xl border border-white/50 p-4 backdrop-blur-md"
+              style={{
+                backgroundColor:
+                  panelBackgroundColor,
+              }}
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-semibold text-slate-900">

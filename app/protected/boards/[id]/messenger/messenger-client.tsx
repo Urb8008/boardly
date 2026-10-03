@@ -69,6 +69,7 @@ type UserPreferences = {
   wallpaper: Wallpaper;
   accent_color: AccentColor;
   tab_color: TabColor;
+  panel_opacity: number;
 };
 
 const WALLPAPER_STYLES: Record<string, string> = {
@@ -226,6 +227,7 @@ export default function MessengerClient({
     wallpaper: "default",
     accent_color: "blue",
     tab_color: "slate",
+    panel_opacity: 50,
   });
 
   const natureWallpaper =
@@ -264,6 +266,27 @@ export default function MessengerClient({
 
   const tabColor =
     TAB_COLORS[preferences.tab_color];
+
+  const panelAlpha =
+    0.12 +
+    (Math.min(
+      100,
+      Math.max(
+        0,
+        preferences.panel_opacity
+      )
+    ) /
+      100) *
+      0.7;
+
+  const panelBackgroundColor =
+    `rgba(255, 255, 255, ${panelAlpha})`;
+
+  const panelBackgroundSoft =
+    `rgba(255, 255, 255, ${Math.max(
+      0.08,
+      panelAlpha * 0.78
+    )})`;
 
   const messagesEndRef =
     useRef<HTMLDivElement | null>(
@@ -508,7 +531,7 @@ export default function MessengerClient({
       await supabase
         .from("user_preferences")
         .select(
-          "wallpaper, accent_color, tab_color"
+          "wallpaper, accent_color, tab_color, panel_opacity"
         )
         .eq("user_id", userId)
         .maybeSingle();
@@ -529,6 +552,10 @@ export default function MessengerClient({
         data.accent_color as AccentColor,
       tab_color:
         data.tab_color as TabColor,
+      panel_opacity:
+        typeof data.panel_opacity === "number"
+          ? data.panel_opacity
+          : 50,
     });
   }
 
@@ -1172,7 +1199,13 @@ export default function MessengerClient({
       </div>
 
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
-        <div className="mb-5 rounded-2xl bg-white/85 p-5 shadow-sm backdrop-blur">
+        <div
+          className="mb-5 rounded-2xl p-5 shadow-sm backdrop-blur"
+          style={{
+            backgroundColor:
+              panelBackgroundColor,
+          }}
+        >
           <button
             type="button"
             onClick={() =>
@@ -1281,8 +1314,20 @@ export default function MessengerClient({
           </div>
         )}
 
-        <div className="flex min-h-[650px] flex-1 flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/76 shadow-xl backdrop-blur-md">
-          <div className="border-b border-slate-200/70 bg-white/72 px-6 py-4 backdrop-blur-sm">
+        <div
+          className="flex min-h-[650px] flex-1 flex-col overflow-hidden rounded-3xl border border-white/50 shadow-xl backdrop-blur-md"
+          style={{
+            backgroundColor:
+              panelBackgroundColor,
+          }}
+        >
+          <div
+            className="border-b border-slate-200/70 px-6 py-4 backdrop-blur-sm"
+            style={{
+              backgroundColor:
+                panelBackgroundSoft,
+            }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-semibold text-slate-900">
@@ -1302,7 +1347,13 @@ export default function MessengerClient({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto bg-white/58 p-6">
+          <div
+            className="flex-1 overflow-y-auto p-6"
+            style={{
+              backgroundColor:
+                panelBackgroundSoft,
+            }}
+          >
             {messages.length ===
             0 ? (
               <div className="flex h-full min-h-80 items-center justify-center">
@@ -1413,7 +1464,13 @@ export default function MessengerClient({
             )}
           </div>
 
-          <div className="border-t border-slate-200/80 bg-white/88 p-4 backdrop-blur-sm">
+          <div
+            className="border-t border-slate-200/80 p-4 backdrop-blur-sm"
+            style={{
+              backgroundColor:
+                panelBackgroundColor,
+            }}
+          >
             {errorMessage && (
               <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
                 {

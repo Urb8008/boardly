@@ -78,6 +78,7 @@ type UserPreferences = {
   wallpaper: Wallpaper;
   accent_color: AccentColor;
   tab_color: TabColor;
+  panel_opacity: number;
 };
 
 const WALLPAPER_STYLES: Record<string, string> = {
@@ -264,6 +265,7 @@ export default function CalendarClient({
     wallpaper: "default",
     accent_color: "blue",
     tab_color: "slate",
+    panel_opacity: 50,
   });
 
   const natureWallpaper =
@@ -306,6 +308,27 @@ export default function CalendarClient({
     TAB_COLORS[
       preferences.tab_color
     ];
+
+  const panelAlpha =
+    0.12 +
+    (Math.min(
+      100,
+      Math.max(
+        0,
+        preferences.panel_opacity
+      )
+    ) /
+      100) *
+      0.7;
+
+  const panelBackgroundColor =
+    `rgba(255, 255, 255, ${panelAlpha})`;
+
+  const mutedPanelBackgroundColor =
+    `rgba(248, 250, 252, ${Math.max(
+      0.08,
+      panelAlpha * 0.72
+    )})`;
 
   useEffect(() => {
     initializeCalendar();
@@ -353,7 +376,7 @@ export default function CalendarClient({
       await supabase
         .from("user_preferences")
         .select(
-          "wallpaper, accent_color, tab_color"
+          "wallpaper, accent_color, tab_color, panel_opacity"
         )
         .eq("user_id", userId)
         .maybeSingle();
@@ -376,6 +399,10 @@ export default function CalendarClient({
         data.accent_color as AccentColor,
       tab_color:
         data.tab_color as TabColor,
+      panel_opacity:
+        typeof data.panel_opacity === "number"
+          ? data.panel_opacity
+          : 50,
     });
   }
 
@@ -1106,7 +1133,13 @@ export default function CalendarClient({
         </div>
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_320px]">
-          <div className="overflow-hidden rounded-3xl border border-white/50 bg-white/78 shadow-xl backdrop-blur-md">
+          <div
+            className="overflow-hidden rounded-3xl border border-white/50 shadow-xl backdrop-blur-md"
+            style={{
+              backgroundColor:
+                panelBackgroundColor,
+            }}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5">
               <div className="flex items-center gap-2">
                 <button
@@ -1147,7 +1180,13 @@ export default function CalendarClient({
               </h2>
             </div>
 
-            <div className="grid grid-cols-7 border-b border-slate-200/80 bg-white/72">
+            <div
+              className="grid grid-cols-7 border-b border-slate-200/80"
+              style={{
+                backgroundColor:
+                  panelBackgroundColor,
+              }}
+            >
               {[
                 "Sun",
                 "Mon",
@@ -1202,14 +1241,16 @@ export default function CalendarClient({
                         )
                       }
                       className={`min-h-32 border-b border-r border-slate-200 p-2 text-left transition ${
-                        day.isCurrentMonth
-                          ? "bg-white/72"
-                          : "bg-slate-100/60"
-                      } ${
                         isSelected
                           ? "ring-2 ring-inset ring-blue-500"
-                          : "hover:bg-blue-50/40"
+                          : "hover:brightness-[1.03]"
                       }`}
+                      style={{
+                        backgroundColor:
+                          day.isCurrentMonth
+                            ? panelBackgroundColor
+                            : mutedPanelBackgroundColor,
+                      }}
                     >
                       <div className="flex justify-end">
                         <span
@@ -1274,7 +1315,13 @@ export default function CalendarClient({
             </div>
           </div>
 
-          <aside className="rounded-3xl border border-white/50 bg-white/78 p-5 shadow-xl backdrop-blur-md">
+          <aside
+            className="rounded-3xl border border-white/50 p-5 shadow-xl backdrop-blur-md"
+            style={{
+              backgroundColor:
+                panelBackgroundColor,
+            }}
+          >
             <div className="flex items-center justify-between">
               <h2 className="font-bold text-slate-900">
                 {selectedDate

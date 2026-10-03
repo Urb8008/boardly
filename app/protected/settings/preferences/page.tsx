@@ -408,6 +408,21 @@ export default function PreferencesPage() {
       wallpaper
     );
 
+  const panelAlpha =
+    0.12 +
+    (Math.min(
+      100,
+      Math.max(
+        0,
+        panelOpacity
+      )
+    ) /
+      100) *
+      0.7;
+
+  const panelBackgroundColor =
+    `rgba(255, 255, 255, ${panelAlpha})`;
+
   if (loading) {
     return (
       <div
@@ -429,7 +444,13 @@ export default function PreferencesPage() {
       style={pageWallpaperStyle}
     >
       <div className="mx-auto max-w-5xl px-6 py-10">
-        <div className="mb-8 rounded-3xl border border-white/40 bg-white/82 p-6 shadow-xl backdrop-blur-md">
+        <div
+          className="mb-8 rounded-3xl border border-white/40 p-6 shadow-xl backdrop-blur-md"
+          style={{
+            backgroundColor:
+              panelBackgroundColor,
+          }}
+        >
           <button
             type="button"
             onClick={() =>
@@ -454,7 +475,13 @@ export default function PreferencesPage() {
         <div className="space-y-8">
           {/* WALLPAPER */}
 
-          <section className="rounded-2xl border border-white/50 bg-white/82 p-6 shadow-xl backdrop-blur-md">
+          <section
+            className="rounded-2xl border border-white/50 p-6 shadow-xl backdrop-blur-md"
+            style={{
+              backgroundColor:
+                panelBackgroundColor,
+            }}
+          >
             <h2 className="text-xl font-semibold text-slate-900">
               Wallpaper
             </h2>
@@ -506,7 +533,13 @@ export default function PreferencesPage() {
 
           {/* ACCENT COLOR */}
 
-          <section className="rounded-2xl border border-white/50 bg-white/82 p-6 shadow-xl backdrop-blur-md">
+          <section
+            className="rounded-2xl border border-white/50 p-6 shadow-xl backdrop-blur-md"
+            style={{
+              backgroundColor:
+                panelBackgroundColor,
+            }}
+          >
             <h2 className="text-xl font-semibold text-slate-900">
               Button colour
             </h2>
@@ -557,7 +590,13 @@ export default function PreferencesPage() {
 
           {/* TAB COLOR */}
 
-          <section className="rounded-2xl border border-white/50 bg-white/82 p-6 shadow-xl backdrop-blur-md">
+          <section
+            className="rounded-2xl border border-white/50 p-6 shadow-xl backdrop-blur-md"
+            style={{
+              backgroundColor:
+                panelBackgroundColor,
+            }}
+          >
             <h2 className="text-xl font-semibold text-slate-900">
               Column colour
             </h2>
@@ -608,7 +647,13 @@ export default function PreferencesPage() {
 
           {/* PANEL READABILITY */}
 
-          <section className="rounded-2xl border border-white/50 bg-white/82 p-6 shadow-xl backdrop-blur-md">
+          <section
+            className="rounded-2xl border border-white/50 p-6 shadow-xl backdrop-blur-md"
+            style={{
+              backgroundColor:
+                panelBackgroundColor,
+            }}
+          >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">
@@ -664,7 +709,13 @@ export default function PreferencesPage() {
 
           {/* PREVIEW */}
 
-          <section className="rounded-2xl border border-white/50 bg-white/82 p-6 shadow-xl backdrop-blur-md">
+          <section
+            className="rounded-2xl border border-white/50 p-6 shadow-xl backdrop-blur-md"
+            style={{
+              backgroundColor:
+                panelBackgroundColor,
+            }}
+          >
             <h2 className="text-xl font-semibold text-slate-900">
               Preview
             </h2>
@@ -695,7 +746,11 @@ export default function PreferencesPage() {
                 ].map((title) => (
                   <div
                     key={title}
-                    className="rounded-xl bg-white/82 p-4 shadow-sm backdrop-blur-md"
+                    className="rounded-xl p-4 shadow-sm backdrop-blur-md"
+                    style={{
+                      backgroundColor:
+                        panelBackgroundColor,
+                    }}
                   >
                     <div
                       className="mb-4 rounded-lg px-3 py-2 font-semibold text-white"
