@@ -59,9 +59,16 @@ type FontColor =
   | "slate"
   | "white"
   | "blue"
+  | "indigo"
+  | "purple"
+  | "cyan"
+  | "teal"
   | "green"
+  | "lime"
   | "amber"
-  | "rose";
+  | "orange"
+  | "rose"
+  | "pink";
 
 
 type AccentColor =
@@ -103,9 +110,16 @@ const FONT_COLORS: Record<FontColor, string> = {
   slate: "#334155",
   white: "#f8fafc",
   blue: "#1d4ed8",
+  indigo: "#4338ca",
+  purple: "#7e22ce",
+  cyan: "#0891b2",
+  teal: "#0f766e",
   green: "#15803d",
+  lime: "#4d7c0f",
   amber: "#b45309",
+  orange: "#c2410c",
   rose: "#be123c",
+  pink: "#be185d",
 };
 
 const FONT_PREFERENCE_CSS = `
@@ -1402,7 +1416,7 @@ export default function BoardsPage() {
                               </button>
 
                               <div
-                                className="invisible absolute right-full top-0 z-[100] mr-2 min-w-max translate-x-1 rounded-2xl border border-white/70 bg-white/90 p-2 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/count:visible group-hover/count:translate-x-0 group-hover/count:opacity-100 group-focus-within/count:visible group-focus-within/count:translate-x-0 group-focus-within/count:opacity-100"
+                                className="invisible absolute right-full top-0 z-[100] mr-2 min-w-max translate-x-1 rounded-2xl border border-white/70 bg-white/90 p-2 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/count:visible group-hover/count:translate-x-0 group-hover/count:opacity-100"
                                 onClick={(event) =>
                                   event.stopPropagation()
                                 }
@@ -1482,7 +1496,7 @@ export default function BoardsPage() {
                             </button>
 
                             <div
-                              className="invisible absolute bottom-full right-0 z-[100] mb-2 min-w-max translate-y-1 rounded-2xl border border-white/70 bg-white/90 p-2 text-left opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100 group-focus-within/menu:visible group-focus-within/menu:translate-y-0 group-focus-within/menu:opacity-100"
+                              className="invisible absolute bottom-full right-0 z-[100] mb-2 min-w-max translate-y-1 rounded-2xl border border-white/70 bg-white/90 p-2 text-left opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100"
                               onClick={(event) =>
                                 event.stopPropagation()
                               }
@@ -1540,7 +1554,7 @@ export default function BoardsPage() {
                                     </button>
 
                                     <div
-                                      className="invisible absolute right-full top-0 z-[120] mr-2 w-52 translate-x-1 rounded-2xl border border-white/70 bg-white/95 p-3 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/preferences:visible group-hover/preferences:translate-x-0 group-hover/preferences:opacity-100 group-focus-within/preferences:visible group-focus-within/preferences:translate-x-0 group-focus-within/preferences:opacity-100"
+                                      className="invisible absolute right-full top-0 z-[120] mr-2 w-52 translate-x-1 rounded-2xl border border-white/70 bg-white/95 p-3 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/preferences:visible group-hover/preferences:translate-x-0 group-hover/preferences:opacity-100"
                                       onClick={(event) =>
                                         event.stopPropagation()
                                       }

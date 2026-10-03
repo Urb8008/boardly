@@ -12,9 +12,16 @@ type FontColor =
   | "slate"
   | "white"
   | "blue"
+  | "indigo"
+  | "purple"
+  | "cyan"
+  | "teal"
   | "green"
+  | "lime"
   | "amber"
-  | "rose";
+  | "orange"
+  | "rose"
+  | "pink";
 
 
 type AccentColor =
@@ -224,9 +231,34 @@ const fontColors: {
     color: "#1d4ed8",
   },
   {
+    value: "indigo",
+    label: "Indigo",
+    color: "#4338ca",
+  },
+  {
+    value: "purple",
+    label: "Purple",
+    color: "#7e22ce",
+  },
+  {
+    value: "cyan",
+    label: "Cyan",
+    color: "#0891b2",
+  },
+  {
+    value: "teal",
+    label: "Teal",
+    color: "#0f766e",
+  },
+  {
     value: "green",
     label: "Green",
     color: "#15803d",
+  },
+  {
+    value: "lime",
+    label: "Lime",
+    color: "#4d7c0f",
   },
   {
     value: "amber",
@@ -234,9 +266,19 @@ const fontColors: {
     color: "#b45309",
   },
   {
+    value: "orange",
+    label: "Orange",
+    color: "#c2410c",
+  },
+  {
     value: "rose",
     label: "Rose",
     color: "#be123c",
+  },
+  {
+    value: "pink",
+    label: "Pink",
+    color: "#be185d",
   },
 ];
 
@@ -245,9 +287,16 @@ const FONT_COLORS: Record<FontColor, string> = {
   slate: "#334155",
   white: "#f8fafc",
   blue: "#1d4ed8",
+  indigo: "#4338ca",
+  purple: "#7e22ce",
+  cyan: "#0891b2",
+  teal: "#0f766e",
   green: "#15803d",
+  lime: "#4d7c0f",
   amber: "#b45309",
+  orange: "#c2410c",
   rose: "#be123c",
+  pink: "#be185d",
 };
 
 const FONT_PREFERENCE_CSS = `

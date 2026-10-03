@@ -104,9 +104,16 @@ type FontColor =
   | "slate"
   | "white"
   | "blue"
+  | "indigo"
+  | "purple"
+  | "cyan"
+  | "teal"
   | "green"
+  | "lime"
   | "amber"
-  | "rose";
+  | "orange"
+  | "rose"
+  | "pink";
 
 
 type AccentColor =
@@ -183,9 +190,16 @@ const FONT_COLORS: Record<FontColor, string> = {
   slate: "#334155",
   white: "#f8fafc",
   blue: "#1d4ed8",
+  indigo: "#4338ca",
+  purple: "#7e22ce",
+  cyan: "#0891b2",
+  teal: "#0f766e",
   green: "#15803d",
+  lime: "#4d7c0f",
   amber: "#b45309",
+  orange: "#c2410c",
   rose: "#be123c",
+  pink: "#be185d",
 };
 
 const FONT_PREFERENCE_CSS = `
