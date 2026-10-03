@@ -1366,7 +1366,7 @@ export default function BoardsPage() {
                                 board
                               )
                             }
-                            className="rounded-lg border border-red-300 bg-gradient-to-b from-red-400 via-red-500 to-red-700 px-4 py-2 text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-lg"
+                            className="rounded-md border border-red-300 bg-gradient-to-b from-red-400 via-red-500 to-red-700 px-2.5 py-1 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-md"
                           >
                             Delete
                           </button>
