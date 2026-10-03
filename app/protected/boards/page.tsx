@@ -5,10 +5,19 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { WALLPAPER_OPTIONS } from "@/lib/preferences/options";
 
+type BoardTileColor =
+  | "slate"
+  | "blue"
+  | "green"
+  | "amber"
+  | "rose";
+
 type Board = {
   id: number;
   name: string;
   user_id: string;
+  board_color: BoardTileColor | null;
+  board_opacity: number | null;
 };
 
 type Priority =
@@ -89,6 +98,50 @@ const ACCENT_COLORS: Record<AccentColor, string> = {
   "pink-soft": "rgba(219, 39, 119, 0.72)",
 };
 
+const BOARD_TILE_COLORS: Record<
+  BoardTileColor,
+  [number, number, number]
+> = {
+  slate: [100, 116, 139],
+  blue: [59, 130, 246],
+  green: [34, 197, 94],
+  amber: [245, 158, 11],
+  rose: [244, 63, 94],
+};
+
+const BOARD_TILE_OPTIONS: {
+  id: BoardTileColor;
+  name: string;
+  swatch: string;
+}[] = [
+  {
+    id: "slate",
+    name: "Slate",
+    swatch: "#64748b",
+  },
+  {
+    id: "blue",
+    name: "Blue",
+    swatch: "#3b82f6",
+  },
+  {
+    id: "green",
+    name: "Green",
+    swatch: "#22c55e",
+  },
+  {
+    id: "amber",
+    name: "Amber",
+    swatch: "#f59e0b",
+  },
+  {
+    id: "rose",
+    name: "Rose",
+    swatch: "#f43f5e",
+  },
+];
+
+
 function getPriorityRank(
   priority: Priority
 ) {
@@ -145,6 +198,33 @@ function getPriorityPillStyle(
     default:
       return undefined;
   }
+}
+
+function getBoardCardBackground(
+  board: Board
+) {
+  const color =
+    board.board_color || "slate";
+
+  const opacity =
+    typeof board.board_opacity === "number"
+      ? Math.min(
+          100,
+          Math.max(
+            0,
+            board.board_opacity
+          )
+        )
+      : 35;
+
+  const [r, g, b] =
+    BOARD_TILE_COLORS[color];
+
+  const alpha =
+    0.08 +
+    (opacity / 100) * 0.7;
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 export default function BoardsPage() {
@@ -499,6 +579,8 @@ export default function BoardsPage() {
       .insert({
         name: trimmedName,
         user_id: user.id,
+        board_color: "slate",
+        board_opacity: 35,
       })
       .select()
       .single();
@@ -900,6 +982,58 @@ export default function BoardsPage() {
     );
   }
 
+  function setBoardAppearanceLocal(
+    boardId: number,
+    updates: Partial<
+      Pick<
+        Board,
+        "board_color" | "board_opacity"
+      >
+    >
+  ) {
+    setBoards((currentBoards) =>
+      currentBoards.map((board) =>
+        board.id === boardId
+          ? {
+              ...board,
+              ...updates,
+            }
+          : board
+      )
+    );
+  }
+
+  async function saveBoardAppearance(
+    board: Board,
+    updates: {
+      board_color?: BoardTileColor;
+      board_opacity?: number;
+    }
+  ) {
+    if (
+      board.user_id !== currentUserId
+    ) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("boards")
+      .update(updates)
+      .eq("id", board.id)
+      .eq(
+        "user_id",
+        board.user_id
+      );
+
+    if (error) {
+      alert(
+        `Error saving board appearance: ${error.message}`
+      );
+
+      await loadBoardsAndStats();
+    }
+  }
+
   function openBoard(boardId: number) {
     router.push(
       `/protected/boards/${boardId}`
@@ -1110,7 +1244,10 @@ export default function BoardsPage() {
                       key={board.id}
                       className="group relative overflow-visible rounded-2xl border border-white/45 shadow-md backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl"
                       style={{
-                        backgroundColor: panelBackgroundColor,
+                        backgroundColor:
+                          getBoardCardBackground(
+                            board
+                          ),
                       }}
                     >
                       <div
@@ -1286,6 +1423,157 @@ export default function BoardsPage() {
                                 >
                                   + Add link
                                 </button>
+
+                                {isOwner && (
+                                  <div className="group/preferences relative">
+                                    <button
+                                      type="button"
+                                      className="inline-flex w-auto items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
+                                      style={{
+                                        backgroundColor:
+                                          accentColor,
+                                      }}
+                                      aria-label={`Open ${board.name} preferences`}
+                                    >
+                                      Preferences
+                                      <span aria-hidden="true">
+                                        ◀
+                                      </span>
+                                    </button>
+
+                                    <div
+                                      className="invisible absolute right-full top-0 z-[120] mr-2 w-52 translate-x-1 rounded-2xl border border-white/70 bg-white/95 p-3 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/preferences:visible group-hover/preferences:translate-x-0 group-hover/preferences:opacity-100 group-focus-within/preferences:visible group-focus-within/preferences:translate-x-0 group-focus-within/preferences:opacity-100"
+                                      onClick={(event) =>
+                                        event.stopPropagation()
+                                      }
+                                    >
+                                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                                        Board colour
+                                      </p>
+
+                                      <div className="mt-2 flex flex-wrap gap-2">
+                                        {BOARD_TILE_OPTIONS.map(
+                                          (option) => (
+                                            <button
+                                              key={
+                                                option.id
+                                              }
+                                              type="button"
+                                              onClick={() => {
+                                                setBoardAppearanceLocal(
+                                                  board.id,
+                                                  {
+                                                    board_color:
+                                                      option.id,
+                                                  }
+                                                );
+
+                                                void saveBoardAppearance(
+                                                  board,
+                                                  {
+                                                    board_color:
+                                                      option.id,
+                                                  }
+                                                );
+                                              }}
+                                              className={`h-7 w-7 rounded-full border-2 shadow-sm transition hover:scale-110 ${
+                                                (board.board_color ||
+                                                  "slate") ===
+                                                option.id
+                                                  ? "border-slate-900"
+                                                  : "border-white"
+                                              }`}
+                                              style={{
+                                                backgroundColor:
+                                                  option.swatch,
+                                              }}
+                                              title={
+                                                option.name
+                                              }
+                                              aria-label={`Set ${board.name} colour to ${option.name}`}
+                                            />
+                                          )
+                                        )}
+                                      </div>
+
+                                      <div className="mt-3 flex items-center justify-between gap-2">
+                                        <span className="text-[11px] font-semibold text-slate-500">
+                                          Transparency
+                                        </span>
+
+                                        <span className="rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                                          {typeof board.board_opacity ===
+                                          "number"
+                                            ? board.board_opacity
+                                            : 35}
+                                          %
+                                        </span>
+                                      </div>
+
+                                      <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        step="5"
+                                        value={
+                                          typeof board.board_opacity ===
+                                          "number"
+                                            ? board.board_opacity
+                                            : 35
+                                        }
+                                        onClick={(event) =>
+                                          event.stopPropagation()
+                                        }
+                                        onChange={(event) => {
+                                          const nextOpacity =
+                                            Number(
+                                              event.target
+                                                .value
+                                            );
+
+                                          setBoardAppearanceLocal(
+                                            board.id,
+                                            {
+                                              board_opacity:
+                                                nextOpacity,
+                                            }
+                                          );
+                                        }}
+                                        onPointerUp={(event) => {
+                                          const nextOpacity =
+                                            Number(
+                                              event.currentTarget
+                                                .value
+                                            );
+
+                                          void saveBoardAppearance(
+                                            board,
+                                            {
+                                              board_opacity:
+                                                nextOpacity,
+                                            }
+                                          );
+                                        }}
+                                        onKeyUp={(event) => {
+                                          const nextOpacity =
+                                            Number(
+                                              event.currentTarget
+                                                .value
+                                            );
+
+                                          void saveBoardAppearance(
+                                            board,
+                                            {
+                                              board_opacity:
+                                                nextOpacity,
+                                            }
+                                          );
+                                        }}
+                                        className="mt-2 w-full accent-blue-600"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
 
                                 {isOwner && (
                                   <button
