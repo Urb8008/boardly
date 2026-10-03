@@ -969,6 +969,14 @@ export default function BoardClient({
     }
   }
 
+  function getLinkIconUrl(
+    url: string
+  ) {
+    return `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(
+      url
+    )}&sz=64`;
+  }
+
   async function loadBoardLinks() {
     const {
       data,
@@ -3374,14 +3382,14 @@ export default function BoardClient({
                 </div>
               )}
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-3">
                 {boardLinks.map(
                   (link) => (
                     <div
                       key={
                         link.id
                       }
-                      className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm"
+                      className="group/link relative"
                     >
                       <a
                         href={
@@ -3389,16 +3397,23 @@ export default function BoardClient({
                         }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="max-w-64 truncate text-sm font-medium text-blue-700 hover:underline"
-                        title={
-                          link.url
-                        }
-                      >
-                        🔗{" "}
-                        {getLinkLabel(
+                        className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/60 bg-white/78 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
+                        title={getLinkLabel(
                           link.label,
                           link.url
                         )}
+                        aria-label={getLinkLabel(
+                          link.label,
+                          link.url
+                        )}
+                      >
+                        <img
+                          src={getLinkIconUrl(
+                            link.url
+                          )}
+                          alt=""
+                          className="h-6 w-6 rounded-sm object-contain"
+                        />
                       </a>
 
                       {link.user_id ===
@@ -3410,8 +3425,12 @@ export default function BoardClient({
                               link
                             )
                           }
-                          className="text-xs font-medium text-red-500 hover:text-red-700"
+                          className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold text-white shadow group-hover/link:flex"
                           title="Delete link"
+                          aria-label={`Delete ${getLinkLabel(
+                            link.label,
+                            link.url
+                          )}`}
                         >
                           ×
                         </button>

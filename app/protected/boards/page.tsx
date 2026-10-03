@@ -11,11 +11,19 @@ type Board = {
   user_id: string;
 };
 
+type Priority =
+  | "low"
+  | "medium"
+  | "high"
+  | "urgent"
+  | null;
+
 type Card = {
   id: number;
   status: string;
   board_id: number;
   user_id: string;
+  priority: Priority;
 };
 
 type BoardStats = {
@@ -23,6 +31,7 @@ type BoardStats = {
   todo: number;
   inProgress: number;
   done: number;
+  highestPriority: Priority;
 };
 
 type BoardLink = {
@@ -79,6 +88,64 @@ const ACCENT_COLORS: Record<AccentColor, string> = {
   "orange-soft": "rgba(234, 88, 12, 0.72)",
   "pink-soft": "rgba(219, 39, 119, 0.72)",
 };
+
+function getPriorityRank(
+  priority: Priority
+) {
+  switch (priority) {
+    case "urgent":
+      return 4;
+    case "high":
+      return 3;
+    case "medium":
+      return 2;
+    case "low":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function getPriorityPillStyle(
+  priority: Priority
+): React.CSSProperties | undefined {
+  switch (priority) {
+    case "low":
+      return {
+        background:
+          "rgba(148, 163, 184, 0.22)",
+        borderColor:
+          "rgba(148, 163, 184, 0.55)",
+      };
+
+    case "medium":
+      return {
+        background:
+          "rgba(59, 130, 246, 0.20)",
+        borderColor:
+          "rgba(59, 130, 246, 0.55)",
+      };
+
+    case "high":
+      return {
+        background:
+          "rgba(249, 115, 22, 0.22)",
+        borderColor:
+          "rgba(249, 115, 22, 0.58)",
+      };
+
+    case "urgent":
+      return {
+        background:
+          "rgba(239, 68, 68, 0.24)",
+        borderColor:
+          "rgba(239, 68, 68, 0.62)",
+      };
+
+    default:
+      return undefined;
+  }
+}
 
 export default function BoardsPage() {
   const router = useRouter();
@@ -285,7 +352,7 @@ export default function BoardsPage() {
     } = await supabase
       .from("cards")
       .select(
-        "id, status, board_id, user_id"
+        "id, status, board_id, user_id, priority"
       )
       .in("board_id", boardIds);
 
@@ -307,6 +374,7 @@ export default function BoardsPage() {
         todo: 0,
         inProgress: 0,
         done: 0,
+        highestPriority: null,
       };
     });
 
@@ -320,6 +388,19 @@ export default function BoardsPage() {
         }
 
         stats[card.board_id].total += 1;
+
+        if (
+          getPriorityRank(card.priority) >
+          getPriorityRank(
+            stats[card.board_id]
+              .highestPriority
+          )
+        ) {
+          stats[
+            card.board_id
+          ].highestPriority =
+            card.priority;
+        }
 
         if (card.status === "todo") {
           stats[card.board_id].todo += 1;
@@ -464,6 +545,7 @@ export default function BoardsPage() {
         todo: 0,
         inProgress: 0,
         done: 0,
+        highestPriority: null,
       },
     }));
 
@@ -1011,6 +1093,7 @@ export default function BoardsPage() {
                       todo: 0,
                       inProgress: 0,
                       done: 0,
+                      highestPriority: null,
                     };
 
                   const isOwner =
@@ -1058,22 +1141,104 @@ export default function BoardsPage() {
                             {board.name}
                           </h2>
 
-                          <div className="group/menu relative flex shrink-0 items-center gap-2">
-                            <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur">
-                              {stats.total}{" "}
-                              {stats.total === 1
-                                ? "card"
-                                : "cards"}
-                            </span>
+                          <div className="relative flex shrink-0 items-center gap-2">
+                            <div className="group/count relative">
+                              <button
+                                type="button"
+                                onClick={(event) =>
+                                  event.stopPropagation()
+                                }
+                                className={`rounded-full border px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur transition ${
+                                  stats.highestPriority
+                                    ? "border-current"
+                                    : "border-white/70 bg-white/80 hover:bg-white"
+                                }`}
+                                style={
+                                  getPriorityPillStyle(
+                                    stats.highestPriority
+                                  )
+                                }
+                                aria-label={`Show ${board.name} card totals`}
+                              >
+                                {stats.total}{" "}
+                                {stats.total === 1
+                                  ? "card"
+                                  : "cards"}
+                              </button>
 
-                            <button
-                              type="button"
-                              onClick={(event) =>
-                                event.stopPropagation()
-                              }
-                              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/75 text-slate-700 shadow-sm backdrop-blur transition hover:bg-white hover:shadow-md"
-                              aria-label={`Open ${board.name} menu`}
-                            >
+                              <div
+                                className="invisible absolute right-full top-0 z-30 mr-2 min-w-max translate-x-1 rounded-2xl border border-white/70 bg-white/90 p-2 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/count:visible group-hover/count:translate-x-0 group-hover/count:opacity-100 group-focus-within/count:visible group-focus-within/count:translate-x-0 group-focus-within/count:opacity-100"
+                                onClick={(event) =>
+                                  event.stopPropagation()
+                                }
+                              >
+                                <div className="flex flex-col items-start gap-2 text-xs">
+                                  <span
+                                    className={`rounded-full px-2.5 py-1 ${
+                                      stats.todo > 0
+                                        ? "font-semibold text-white shadow-sm"
+                                        : "bg-slate-100 text-slate-600"
+                                    }`}
+                                    style={
+                                      stats.todo > 0
+                                        ? {
+                                            backgroundColor:
+                                              accentColor,
+                                          }
+                                        : undefined
+                                    }
+                                  >
+                                    {stats.todo} To Do
+                                  </span>
+
+                                  <span
+                                    className={`rounded-full px-2.5 py-1 ${
+                                      stats.inProgress > 0
+                                        ? "font-semibold text-white shadow-sm"
+                                        : "bg-blue-50 text-blue-700"
+                                    }`}
+                                    style={
+                                      stats.inProgress > 0
+                                        ? {
+                                            backgroundColor:
+                                              accentColor,
+                                          }
+                                        : undefined
+                                    }
+                                  >
+                                    {stats.inProgress} In Progress
+                                  </span>
+
+                                  <span
+                                    className={`rounded-full px-2.5 py-1 ${
+                                      stats.done > 0
+                                        ? "font-semibold text-white shadow-sm"
+                                        : "bg-green-50 text-green-700"
+                                    }`}
+                                    style={
+                                      stats.done > 0
+                                        ? {
+                                            backgroundColor:
+                                              accentColor,
+                                          }
+                                        : undefined
+                                    }
+                                  >
+                                    {stats.done} Done
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="group/menu relative">
+                              <button
+                                type="button"
+                                onClick={(event) =>
+                                  event.stopPropagation()
+                                }
+                                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/75 text-slate-700 shadow-sm backdrop-blur transition hover:bg-white hover:shadow-md"
+                                aria-label={`Open ${board.name} menu`}
+                              >
                               <span className="flex flex-col gap-[3px]">
                                 <span className="h-[2px] w-4 rounded-full bg-current" />
                                 <span className="h-[2px] w-4 rounded-full bg-current" />
@@ -1187,59 +1352,10 @@ export default function BoardsPage() {
                                 </>
                               )}
                             </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-
-                        <div className="mt-5 flex flex-wrap gap-2 text-xs">
-                          <span
-                            className={`rounded-full px-2.5 py-1 ${
-                              stats.todo > 0
-                                ? "font-semibold text-white shadow-sm"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
-                            style={
-                              stats.todo > 0
-                                ? { backgroundColor: accentColor }
-                                : undefined
-                            }
-                          >
-                            {stats.todo} To Do
-                          </span>
-
-                          <span
-                            className={`rounded-full px-2.5 py-1 ${
-                              stats.inProgress > 0
-                                ? "font-semibold text-white shadow-sm"
-                                : "bg-blue-50 text-blue-700"
-                            }`}
-                            style={
-                              stats.inProgress > 0
-                                ? { backgroundColor: accentColor }
-                                : undefined
-                            }
-                          >
-                            {
-                              stats.inProgress
-                            }{" "}
-                            In Progress
-                          </span>
-
-                          <span
-                            className={`rounded-full px-2.5 py-1 ${
-                              stats.done > 0
-                                ? "font-semibold text-white shadow-sm"
-                                : "bg-green-50 text-green-700"
-                            }`}
-                            style={
-                              stats.done > 0
-                                ? { backgroundColor: accentColor }
-                                : undefined
-                            }
-                          >
-                            {stats.done} Done
-                          </span>
-                        </div>
-                      </div>
 
                       <div className="border-t border-slate-100 px-6 py-4">
                         {isOwner ? (
