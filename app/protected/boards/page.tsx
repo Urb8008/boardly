@@ -665,6 +665,14 @@ export default function BoardsPage() {
     }
   }
 
+  function getLinkIconUrl(
+    url: string
+  ) {
+    return `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(
+      url
+    )}&sz=64`;
+  }
+
   function openLinkModal(
     board: Board
   ) {
@@ -1022,53 +1030,167 @@ export default function BoardsPage() {
                         backgroundColor: panelBackgroundColor,
                       }}
                     >
-                      <button
-                        type="button"
+                      <div
+                        role="button"
+                        tabIndex={0}
                         onClick={() =>
                           openBoard(board.id)
                         }
-                        className="w-full p-6 text-left"
+                        onKeyDown={(event) => {
+                          if (
+                            event.target !== event.currentTarget
+                          ) {
+                            return;
+                          }
+
+                          if (
+                            event.key === "Enter" ||
+                            event.key === " "
+                          ) {
+                            event.preventDefault();
+                            openBoard(board.id);
+                          }
+                        }}
+                        className="w-full cursor-pointer p-6 text-left"
                       >
                         <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p
-                                className="text-xs font-semibold uppercase tracking-wide"
-                                style={{
-                                  color:
-                                    accentColor,
-                                }}
-                              >
-                                Board
-                              </p>
+                          <h2 className="text-xl font-bold text-slate-900">
+                            {board.name}
+                          </h2>
 
-                              {isOwner ? (
-                                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-                                  Owner
-                                </span>
-                              ) : (
-                                <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
-                                  Shared
-                                </span>
+                          <div className="group/menu relative flex shrink-0 items-center gap-2">
+                            <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur">
+                              {stats.total}{" "}
+                              {stats.total === 1
+                                ? "card"
+                                : "cards"}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={(event) =>
+                                event.stopPropagation()
+                              }
+                              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/75 text-slate-700 shadow-sm backdrop-blur transition hover:bg-white hover:shadow-md"
+                              aria-label={`Open ${board.name} menu`}
+                            >
+                              <span className="flex flex-col gap-[3px]">
+                                <span className="h-[2px] w-4 rounded-full bg-current" />
+                                <span className="h-[2px] w-4 rounded-full bg-current" />
+                                <span className="h-[2px] w-4 rounded-full bg-current" />
+                              </span>
+                            </button>
+
+                            <div
+                              className="invisible absolute right-0 top-10 z-20 min-w-max translate-y-1 rounded-2xl border border-white/70 bg-white/90 p-2 text-left opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100 group-focus-within/menu:visible group-focus-within/menu:translate-y-0 group-focus-within/menu:opacity-100"
+                              onClick={(event) =>
+                                event.stopPropagation()
+                              }
+                            >
+                              <div className="flex flex-col items-start gap-2">
+                                {isOwner && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      openRenameModal(
+                                        board
+                                      )
+                                    }
+                                    className="inline-flex w-auto items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
+                                    style={{
+                                      backgroundColor:
+                                        accentColor,
+                                    }}
+                                  >
+                                    Rename board
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    openLinkModal(
+                                      board
+                                    )
+                                  }
+                                  className="inline-flex w-auto items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
+                                  style={{
+                                    backgroundColor:
+                                      accentColor,
+                                  }}
+                                >
+                                  + Add link
+                                </button>
+                              </div>
+
+                              {links.length > 0 && (
+                                <>
+                                  <div className="my-2 border-t border-slate-200/80" />
+
+                                  <p className="px-1 pb-2 pt-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                                    Links
+                                  </p>
+
+                                  <div className="flex flex-wrap gap-2">
+                                    {links.map(
+                                      (link) => (
+                                        <div
+                                          key={
+                                            link.id
+                                          }
+                                          className="group/link relative"
+                                        >
+                                          <a
+                                            href={
+                                              link.url
+                                            }
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                                            title={getLinkLabel(
+                                              link
+                                            )}
+                                          >
+                                            <img
+                                              src={getLinkIconUrl(
+                                                link.url
+                                              )}
+                                              alt=""
+                                              className="h-5 w-5 rounded-sm"
+                                            />
+                                            <span className="sr-only">
+                                              {getLinkLabel(
+                                                link
+                                              )}
+                                            </span>
+                                          </a>
+
+                                          {link.user_id ===
+                                            currentUserId && (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                deleteBoardLink(
+                                                  link
+                                                )
+                                              }
+                                              className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold text-white shadow group-hover/link:flex"
+                                              title="Delete link"
+                                            >
+                                              ×
+                                            </button>
+                                          )}
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                </>
                               )}
                             </div>
-
-                            <h2 className="mt-2 text-xl font-bold text-slate-900">
-                              {board.name}
-                            </h2>
                           </div>
-
-                          
                         </div>
 
-                        <p className="mt-5 text-sm font-medium text-slate-700">
-                          {stats.total}{" "}
-                          {stats.total === 1
-                            ? "card"
-                            : "cards"}
-                        </p>
-
-                        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                        <div className="mt-5 flex flex-wrap gap-2 text-xs">
                           <span
                             className={`rounded-full px-2.5 py-1 ${
                               stats.todo > 0
@@ -1117,124 +1239,21 @@ export default function BoardsPage() {
                             {stats.done} Done
                           </span>
                         </div>
-                      </button>
-
-                      <div className="border-t border-slate-100 px-6 py-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Links
-                          </p>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openLinkModal(
-                                board
-                              )
-                            }
-                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110"
-                            style={{ backgroundColor: accentColor }}
-                          >
-                            + Add link
-                          </button>
-                        </div>
-
-                        {links.length ===
-                        0 ? (
-                          <p className="mt-3 text-xs text-slate-400">
-                            No links yet.
-                          </p>
-                        ) : (
-                          <div className="mt-3 flex flex-col gap-2">
-                            {links
-                              .slice(0, 3)
-                              .map(
-                                (
-                                  link
-                                ) => (
-                                  <div
-                                    key={
-                                      link.id
-                                    }
-                                    className="flex items-center justify-between gap-2"
-                                  >
-                                    <a
-                                      href={
-                                        link.url
-                                      }
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="min-w-0 flex-1 truncate text-sm font-medium text-blue-700 hover:underline"
-                                      title={
-                                        link.url
-                                      }
-                                    >
-                                      🔗{" "}
-                                      {getLinkLabel(
-                                        link
-                                      )}
-                                    </a>
-
-                                    {link.user_id ===
-                                      currentUserId && (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          deleteBoardLink(
-                                            link
-                                          )
-                                        }
-                                        className="shrink-0 text-xs font-semibold text-red-500 hover:text-red-700"
-                                        title="Delete link"
-                                      >
-                                        ×
-                                      </button>
-                                    )}
-                                  </div>
-                                )
-                              )}
-
-                            {links.length >
-                              3 && (
-                              <p className="text-xs text-slate-400">
-                                +
-                                {links.length -
-                                  3}{" "}
-                                more
-                              </p>
-                            )}
-                          </div>
-                        )}
                       </div>
 
                       <div className="border-t border-slate-100 px-6 py-4">
                         {isOwner ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openRenameModal(
-                                  board
-                                )
-                              }
-                              className="rounded-lg px-3 py-2 text-sm font-medium text-white transition hover:brightness-110"
-                              style={{ backgroundColor: accentColor }}
-                            >
-                              Rename
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setDeleteTarget(
-                                  board
-                                )
-                              }
-                              className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                            >
-                              Delete
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteTarget(
+                                board
+                              )
+                            }
+                            className="rounded-lg border border-red-300 bg-gradient-to-b from-red-400 via-red-500 to-red-700 px-4 py-2 text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-lg"
+                          >
+                            Delete
+                          </button>
                         ) : (
                           <p className="text-xs font-medium text-slate-400">
                             Shared with you
