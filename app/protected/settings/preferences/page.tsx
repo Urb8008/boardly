@@ -7,6 +7,16 @@ import { WALLPAPER_OPTIONS } from "@/lib/preferences/options";
 
 type Wallpaper = string;
 
+type FontColor =
+  | "dark"
+  | "slate"
+  | "white"
+  | "blue"
+  | "green"
+  | "amber"
+  | "rose";
+
+
 type AccentColor =
   | "blue"
   | "purple"
@@ -187,6 +197,103 @@ const tabColors: {
   },
 ];
 
+
+const fontColors: {
+  value: FontColor;
+  label: string;
+  color: string;
+}[] = [
+  {
+    value: "dark",
+    label: "Dark",
+    color: "#0f172a",
+  },
+  {
+    value: "slate",
+    label: "Slate",
+    color: "#334155",
+  },
+  {
+    value: "white",
+    label: "White",
+    color: "#f8fafc",
+  },
+  {
+    value: "blue",
+    label: "Blue",
+    color: "#1d4ed8",
+  },
+  {
+    value: "green",
+    label: "Green",
+    color: "#15803d",
+  },
+  {
+    value: "amber",
+    label: "Amber",
+    color: "#b45309",
+  },
+  {
+    value: "rose",
+    label: "Rose",
+    color: "#be123c",
+  },
+];
+
+const FONT_COLORS: Record<FontColor, string> = {
+  dark: "#0f172a",
+  slate: "#334155",
+  white: "#f8fafc",
+  blue: "#1d4ed8",
+  green: "#15803d",
+  amber: "#b45309",
+  rose: "#be123c",
+};
+
+const FONT_PREFERENCE_CSS = `
+  .touchbase-font-preferences .text-slate-950,
+  .touchbase-font-preferences .text-slate-900,
+  .touchbase-font-preferences .text-slate-800,
+  .touchbase-font-preferences .text-slate-700,
+  .touchbase-font-preferences .text-slate-600,
+  .touchbase-font-preferences .text-slate-500,
+  .touchbase-font-preferences .text-slate-400 {
+    color: var(--tb-font-color) !important;
+  }
+
+  .touchbase-font-preferences .text-xs {
+    font-size: calc(0.75rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-sm {
+    font-size: calc(0.875rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-base {
+    font-size: calc(1rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-lg {
+    font-size: calc(1.125rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-xl {
+    font-size: calc(1.25rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-2xl {
+    font-size: calc(1.5rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-3xl {
+    font-size: calc(1.875rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-4xl {
+    font-size: calc(2.25rem * var(--tb-font-scale));
+  }
+`;
+
 const WALLPAPER_STYLES: Record<string, string> = {
   default:
     "linear-gradient(135deg, #f8fafc, #e2e8f0)",
@@ -250,6 +357,12 @@ export default function PreferencesPage() {
   const [panelOpacity, setPanelOpacity] =
     useState(50);
 
+  const [fontColor, setFontColor] =
+    useState<FontColor>("slate");
+
+  const [fontSize, setFontSize] =
+    useState(100);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -288,7 +401,7 @@ export default function PreferencesPage() {
     } = await supabase
       .from("user_preferences")
       .select(
-        "wallpaper, accent_color, tab_color, panel_opacity"
+        "wallpaper, accent_color, tab_color, panel_opacity, font_color, font_size"
       )
       .eq("user_id", user.id)
       .maybeSingle();
@@ -320,6 +433,17 @@ export default function PreferencesPage() {
         typeof data.panel_opacity === "number"
           ? data.panel_opacity
           : 50
+      );
+
+      setFontColor(
+        (data.font_color as FontColor) ||
+          "slate"
+      );
+
+      setFontSize(
+        typeof data.font_size === "number"
+          ? data.font_size
+          : 100
       );
     }
 
@@ -358,6 +482,10 @@ export default function PreferencesPage() {
               tabColor,
             panel_opacity:
               panelOpacity,
+            font_color:
+              fontColor,
+            font_size:
+              fontSize,
             updated_at:
               new Date().toISOString(),
           },
@@ -403,6 +531,27 @@ export default function PreferencesPage() {
         item.value === tabColor
     );
 
+  const selectedFont =
+    fontColors.find(
+      (item) =>
+        item.value === fontColor
+    );
+
+  const fontPreferenceStyle = {
+    "--tb-font-color":
+      FONT_COLORS[fontColor],
+    "--tb-font-scale":
+      String(
+        Math.min(
+          130,
+          Math.max(
+            80,
+            fontSize
+          )
+        ) / 100
+      ),
+  } as React.CSSProperties;
+
   const pageWallpaperStyle =
     getPageWallpaperStyle(
       wallpaper
@@ -440,9 +589,10 @@ export default function PreferencesPage() {
 
   return (
     <div
-      className="min-h-screen"
-      style={pageWallpaperStyle}
+      className="touchbase-font-preferences min-h-screen"
+      style={{ ...pageWallpaperStyle, ...fontPreferenceStyle }}
     >
+      <style>{FONT_PREFERENCE_CSS}</style>
       <div className="mx-auto max-w-5xl px-6 py-10">
         <div
           className="mb-8 rounded-3xl border border-white/40 p-6 shadow-xl backdrop-blur-md"
@@ -703,6 +853,135 @@ export default function PreferencesPage() {
 
               <p className="mt-1 text-sm text-slate-700">
                 Move the slider to make glass panels clearer or more transparent.
+              </p>
+            </div>
+          </section>
+
+          {/* FONT APPEARANCE */}
+
+          <section
+            className="rounded-2xl border border-white/50 p-6 shadow-xl backdrop-blur-md"
+            style={{
+              backgroundColor:
+                panelBackgroundColor,
+            }}
+          >
+            <h2 className="text-xl font-semibold text-slate-900">
+              Font appearance
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Choose the main text colour and adjust the text size across TouchBase.
+            </p>
+
+            <div className="mt-6">
+              <p className="text-sm font-semibold text-slate-700">
+                Font colour
+              </p>
+
+              <div className="mt-3 flex flex-wrap gap-3">
+                {fontColors.map(
+                  (item) => {
+                    const selected =
+                      fontColor ===
+                      item.value;
+
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() =>
+                          setFontColor(
+                            item.value
+                          )
+                        }
+                        className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${
+                          selected
+                            ? "border-slate-900 bg-white/90"
+                            : "border-slate-200 hover:border-slate-400"
+                        }`}
+                      >
+                        <span
+                          className="h-6 w-6 rounded-full border border-slate-300"
+                          style={{
+                            backgroundColor:
+                              item.color,
+                          }}
+                        />
+
+                        <span className="text-sm font-medium text-slate-700">
+                          {item.label}
+                        </span>
+                      </button>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+
+            <div className="mt-7">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm font-semibold text-slate-700">
+                  Font size
+                </p>
+
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                  {fontSize}%
+                </span>
+              </div>
+
+              <input
+                type="range"
+                min="80"
+                max="130"
+                step="5"
+                value={fontSize}
+                onChange={(event) =>
+                  setFontSize(
+                    Number(
+                      event.target.value
+                    )
+                  )
+                }
+                className="mt-4 w-full cursor-pointer"
+              />
+
+              <div className="mt-2 flex justify-between text-xs font-medium text-slate-500">
+                <span>Smaller</span>
+                <span>Default</span>
+                <span>Larger</span>
+              </div>
+            </div>
+
+            <div
+              className="mt-6 rounded-2xl border border-white/60 bg-white/75 p-5 shadow-sm backdrop-blur"
+              style={{
+                color:
+                  selectedFont?.color,
+              }}
+            >
+              <p
+                className="font-semibold"
+                style={{
+                  fontSize: `${Math.round(
+                    18 *
+                      (fontSize / 100)
+                  )}px`,
+                }}
+              >
+                TouchBase font preview
+              </p>
+
+              <p
+                className="mt-2"
+                style={{
+                  fontSize: `${Math.round(
+                    14 *
+                      (fontSize / 100)
+                  )}px`,
+                }}
+              >
+                This is how your main interface text will look.
               </p>
             </div>
           </section>

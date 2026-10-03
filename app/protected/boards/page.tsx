@@ -54,6 +54,16 @@ type BoardLink = {
 
 type Wallpaper = string;
 
+type FontColor =
+  | "dark"
+  | "slate"
+  | "white"
+  | "blue"
+  | "green"
+  | "amber"
+  | "rose";
+
+
 type AccentColor =
   | "blue"
   | "purple"
@@ -70,6 +80,8 @@ type UserPreferences = {
   wallpaper: Wallpaper;
   accent_color: AccentColor;
   panel_opacity: number;
+  font_color: FontColor;
+  font_size: number;
 };
 
 const WALLPAPER_STYLES: Record<string, string> = {
@@ -84,6 +96,67 @@ const WALLPAPER_STYLES: Record<string, string> = {
   midnight:
     "linear-gradient(135deg, #0f172a, #312e81)",
 };
+
+
+const FONT_COLORS: Record<FontColor, string> = {
+  dark: "#0f172a",
+  slate: "#334155",
+  white: "#f8fafc",
+  blue: "#1d4ed8",
+  green: "#15803d",
+  amber: "#b45309",
+  rose: "#be123c",
+};
+
+const FONT_PREFERENCE_CSS = `
+  .touchbase-font-preferences .text-slate-950,
+  .touchbase-font-preferences .text-slate-900,
+  .touchbase-font-preferences .text-slate-800,
+  .touchbase-font-preferences .text-slate-700,
+  .touchbase-font-preferences .text-slate-600,
+  .touchbase-font-preferences .text-slate-500,
+  .touchbase-font-preferences .text-slate-400,
+  .touchbase-font-preferences .text-gray-950,
+  .touchbase-font-preferences .text-gray-900,
+  .touchbase-font-preferences .text-gray-800,
+  .touchbase-font-preferences .text-gray-700,
+  .touchbase-font-preferences .text-gray-600,
+  .touchbase-font-preferences .text-gray-500 {
+    color: var(--tb-font-color) !important;
+  }
+
+  .touchbase-font-preferences .text-xs {
+    font-size: calc(0.75rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-sm {
+    font-size: calc(0.875rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-base {
+    font-size: calc(1rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-lg {
+    font-size: calc(1.125rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-xl {
+    font-size: calc(1.25rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-2xl {
+    font-size: calc(1.5rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-3xl {
+    font-size: calc(1.875rem * var(--tb-font-scale));
+  }
+
+  .touchbase-font-preferences .text-4xl {
+    font-size: calc(2.25rem * var(--tb-font-scale));
+  }
+`;
 
 const ACCENT_COLORS: Record<AccentColor, string> = {
   blue: "#2563eb",
@@ -280,6 +353,8 @@ export default function BoardsPage() {
       wallpaper: "default",
       accent_color: "blue",
       panel_opacity: 50,
+      font_color: "slate",
+      font_size: 100,
     });
 
   const natureWallpaper =
@@ -325,6 +400,21 @@ export default function BoardsPage() {
   const panelBackgroundColor =
     `rgba(255, 255, 255, ${panelAlpha})`;
 
+  const fontPreferenceStyle = {
+    "--tb-font-color":
+      FONT_COLORS[preferences.font_color],
+    "--tb-font-scale":
+      String(
+        Math.min(
+          130,
+          Math.max(
+            80,
+            preferences.font_size
+          )
+        ) / 100
+      ),
+  } as React.CSSProperties;
+
   useEffect(() => {
     initializeDashboard();
   }, []);
@@ -366,7 +456,7 @@ export default function BoardsPage() {
   async function loadPreferences(userId: string) {
     const { data, error } = await supabase
       .from("user_preferences")
-      .select("wallpaper, accent_color, panel_opacity")
+      .select("wallpaper, accent_color, panel_opacity, font_color, font_size")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -391,6 +481,13 @@ export default function BoardsPage() {
         typeof data.panel_opacity === "number"
           ? data.panel_opacity
           : 50,
+      font_color:
+        (data.font_color as FontColor) ||
+        "slate",
+      font_size:
+        typeof data.font_size === "number"
+          ? data.font_size
+          : 100,
     });
   }
 
@@ -1087,9 +1184,10 @@ export default function BoardsPage() {
   return (
     <>
       <main
-        className="min-h-screen"
-        style={wallpaperStyle}
+        className="touchbase-font-preferences min-h-screen"
+        style={{ ...wallpaperStyle, ...fontPreferenceStyle }}
       >
+        <style>{FONT_PREFERENCE_CSS}</style>
         {/* TOP NAVIGATION */}
 
         <div className="border-b border-white/30 bg-white/90 shadow-sm backdrop-blur">
