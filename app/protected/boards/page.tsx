@@ -1012,7 +1012,7 @@ export default function BoardsPage() {
 
         <div className="mx-auto max-w-7xl p-6 sm:p-8">
           <div
-            className="rounded-3xl border border-white/40 p-6 shadow-xl backdrop-blur-md sm:p-8"
+            className="overflow-visible rounded-3xl border border-white/40 p-6 shadow-xl backdrop-blur-md sm:p-8"
             style={{
               backgroundColor: panelBackgroundColor,
             }}
@@ -1108,7 +1108,7 @@ export default function BoardsPage() {
                   return (
                     <div
                       key={board.id}
-                      className="group overflow-hidden rounded-2xl border border-white/45 shadow-md backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl"
+                      className="group relative overflow-visible rounded-2xl border border-white/45 shadow-md backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl"
                       style={{
                         backgroundColor: panelBackgroundColor,
                       }}
@@ -1167,7 +1167,7 @@ export default function BoardsPage() {
                               </button>
 
                               <div
-                                className="invisible absolute right-full top-0 z-30 mr-2 min-w-max translate-x-1 rounded-2xl border border-white/70 bg-white/90 p-2 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/count:visible group-hover/count:translate-x-0 group-hover/count:opacity-100 group-focus-within/count:visible group-focus-within/count:translate-x-0 group-focus-within/count:opacity-100"
+                                className="invisible absolute right-full top-0 z-[100] mr-2 min-w-max translate-x-1 rounded-2xl border border-white/70 bg-white/90 p-2 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/count:visible group-hover/count:translate-x-0 group-hover/count:opacity-100 group-focus-within/count:visible group-focus-within/count:translate-x-0 group-focus-within/count:opacity-100"
                                 onClick={(event) =>
                                   event.stopPropagation()
                                 }
@@ -1247,7 +1247,7 @@ export default function BoardsPage() {
                             </button>
 
                             <div
-                              className="invisible absolute right-0 top-10 z-20 min-w-max translate-y-1 rounded-2xl border border-white/70 bg-white/90 p-2 text-left opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100 group-focus-within/menu:visible group-focus-within/menu:translate-y-0 group-focus-within/menu:opacity-100"
+                              className="invisible absolute bottom-full right-0 z-[100] mb-2 min-w-max translate-y-1 rounded-2xl border border-white/70 bg-white/90 p-2 text-left opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100 group-focus-within/menu:visible group-focus-within/menu:translate-y-0 group-focus-within/menu:opacity-100"
                               onClick={(event) =>
                                 event.stopPropagation()
                               }
@@ -1286,6 +1286,20 @@ export default function BoardsPage() {
                                 >
                                   + Add link
                                 </button>
+
+                                {isOwner && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setDeleteTarget(
+                                        board
+                                      )
+                                    }
+                                    className="inline-flex w-auto items-center rounded-lg bg-gradient-to-b from-red-400 via-red-500 to-red-700 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-md"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
                               </div>
 
                               {links.length > 0 && (
@@ -1357,25 +1371,6 @@ export default function BoardsPage() {
                           </div>
                         </div>
 
-                      <div className="border-t border-slate-100 px-6 py-4">
-                        {isOwner ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDeleteTarget(
-                                board
-                              )
-                            }
-                            className="rounded-md border border-red-300 bg-gradient-to-b from-red-400 via-red-500 to-red-700 px-2.5 py-1 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-md"
-                          >
-                            Delete
-                          </button>
-                        ) : (
-                          <p className="text-xs font-medium text-slate-400">
-                            Shared with you
-                          </p>
-                        )}
-                      </div>
                     </div>
                   );
                 })}
