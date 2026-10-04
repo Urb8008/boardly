@@ -1416,7 +1416,7 @@ export default function BoardsPage() {
                               </button>
 
                               <div
-                                className="invisible absolute right-full top-0 z-[100] mr-2 min-w-max translate-x-1 rounded-2xl border border-white/70 bg-white/90 p-2 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/count:visible group-hover/count:translate-x-0 group-hover/count:opacity-100"
+                                className="invisible absolute bottom-0 right-full z-[100] mr-2 min-w-max translate-x-1 rounded-2xl border border-white/70 bg-white/90 p-2 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/count:visible group-hover/count:translate-x-0 group-hover/count:opacity-100"
                                 onClick={(event) =>
                                   event.stopPropagation()
                                 }
