@@ -35,6 +35,9 @@ export default function InviteClient({
   const [success, setSuccess] =
     useState("");
 
+  const [signedInEmail, setSignedInEmail] =
+    useState("");
+
   useEffect(() => {
     loadInvite();
   }, []);
@@ -61,6 +64,8 @@ export default function InviteClient({
       return;
     }
 
+    setSignedInEmail(user.email ?? "");
+
     const {
       data,
       error: inviteError,
@@ -79,7 +84,7 @@ export default function InviteClient({
     if (inviteError || !inviteData) {
       setError(
         inviteError?.message ||
-          "This invite could not be found, has already been accepted, or does not belong to this account."
+          `Invite #${inviteId} could not be loaded for ${user.email ?? "this account"}. The invite may have already been accepted, the link may be incorrect, or it was sent to a different email address.`
       );
 
       setLoading(false);
@@ -88,6 +93,16 @@ export default function InviteClient({
 
     setInvite(inviteData as Invite);
     setLoading(false);
+  }
+
+  async function signInWithAnotherAccount() {
+    const invitePath = `/protected/invites/${inviteId}`;
+
+    await supabase.auth.signOut();
+
+    router.replace(
+      `/auth/login?next=${encodeURIComponent(invitePath)}`
+    );
   }
 
   async function acceptInvite() {
@@ -157,6 +172,28 @@ export default function InviteClient({
               {error}
             </div>
 
+            {signedInEmail && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="font-medium text-slate-900">
+                  Signed in as
+                </p>
+                <p className="mt-1 break-all">
+                  {signedInEmail}
+                </p>
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  This email must exactly match the email address the invitation was sent to.
+                </p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={signInWithAnotherAccount}
+              className="mt-6 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
+            >
+              Sign in with another account
+            </button>
+
             <button
               type="button"
               onClick={() =>
@@ -164,7 +201,7 @@ export default function InviteClient({
                   "/protected/boards"
                 )
               }
-              className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800"
+              className="mt-3 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800"
             >
               Go to boards
             </button>
