@@ -3696,7 +3696,11 @@ export default function BoardClient({
                         ""
                       );
                     }}
-                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                    className="rounded-lg border border-white/25 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:brightness-110"
+                    style={{
+                      backgroundColor:
+                        accentColor,
+                    }}
                   >
                     + Add link
                   </button>
@@ -3717,7 +3721,7 @@ export default function BoardClient({
                         ""
                       );
                     }}
-                    className="rounded-lg px-4 py-2 text-sm font-medium text-white hover:brightness-95"
+                    className="rounded-lg border border-white/25 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:brightness-110"
                     style={{
                       backgroundColor:
                         accentColor,
