@@ -348,6 +348,31 @@ export default function BoardClient({
     setIsAddingBoardLink,
   ] = useState(false);
 
+  const [
+    isAddingBoardApp,
+    setIsAddingBoardApp,
+  ] = useState(false);
+
+  const [
+    boardAppName,
+    setBoardAppName,
+  ] = useState("");
+
+  const [
+    boardAppLaunchUrl,
+    setBoardAppLaunchUrl,
+  ] = useState("");
+
+  const [
+    boardAppFallbackUrl,
+    setBoardAppFallbackUrl,
+  ] = useState("");
+
+  const [
+    boardAppError,
+    setBoardAppError,
+  ] = useState("");
+
   const [loading, setLoading] =
     useState(true);
 
@@ -1060,6 +1085,88 @@ export default function BoardClient({
     }
   }
 
+  type BoardAppTarget = {
+    appUrl: string;
+    webUrl: string;
+  };
+
+  function normalizeAppLaunchUrl(
+    value: string
+  ) {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return null;
+    }
+
+    if (
+      !/^[a-z][a-z0-9+.-]*:/i.test(
+        trimmed
+      )
+    ) {
+      return null;
+    }
+
+    const protocol =
+      trimmed
+        .split(":", 1)[0]
+        .toLowerCase();
+
+    if (
+      ["http", "https", "javascript", "data", "file"].includes(
+        protocol
+      )
+    ) {
+      return null;
+    }
+
+    return trimmed;
+  }
+
+  function encodeBoardAppUrl(
+    appUrl: string,
+    webUrl: string
+  ) {
+    return `touchbase-app:${encodeURIComponent(
+      JSON.stringify({
+        appUrl,
+        webUrl,
+      })
+    )}`;
+  }
+
+  function parseBoardAppUrl(
+    url: string
+  ): BoardAppTarget | null {
+    const prefix = "touchbase-app:";
+
+    if (!url.startsWith(prefix)) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(
+        decodeURIComponent(
+          url.slice(prefix.length)
+        )
+      ) as Partial<BoardAppTarget>;
+
+      if (
+        typeof parsed.appUrl !== "string" ||
+        typeof parsed.webUrl !== "string"
+      ) {
+        return null;
+      }
+
+      return {
+        appUrl: parsed.appUrl,
+        webUrl: parsed.webUrl,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   function getLinkLabel(
     label: string | null,
     url: string
@@ -1071,21 +1178,102 @@ export default function BoardClient({
       return trimmed;
     }
 
+    const appTarget =
+      parseBoardAppUrl(url);
+
+    const displayUrl =
+      appTarget?.webUrl || url;
+
     try {
       return new URL(
-        url
+        displayUrl
       ).hostname;
     } catch {
-      return url;
+      return displayUrl;
     }
   }
 
   function getLinkIconUrl(
     url: string
   ) {
+    const appTarget =
+      parseBoardAppUrl(url);
+
+    const iconUrl =
+      appTarget?.webUrl || url;
+
     return `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(
-      url
+      iconUrl
     )}&sz=64`;
+  }
+
+  function openBoardShortcut(
+    link: BoardLink
+  ) {
+    const appTarget =
+      parseBoardAppUrl(
+        link.url
+      );
+
+    if (!appTarget) {
+      window.open(
+        link.url,
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+      return;
+    }
+
+    let appOpened = false;
+
+    const markAppOpened = () => {
+      appOpened = true;
+    };
+
+    const handleVisibility = () => {
+      if (
+        document.visibilityState ===
+        "hidden"
+      ) {
+        appOpened = true;
+      }
+    };
+
+    window.addEventListener(
+      "blur",
+      markAppOpened,
+      { once: true }
+    );
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility
+    );
+
+    window.location.href =
+      appTarget.appUrl;
+
+    window.setTimeout(() => {
+      window.removeEventListener(
+        "blur",
+        markAppOpened
+      );
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility
+      );
+
+      if (
+        !appOpened &&
+        document.visibilityState ===
+          "visible"
+      ) {
+        window.location.href =
+          appTarget.webUrl;
+      }
+    }, 1400);
   }
 
   async function loadBoardLinks() {
@@ -1168,6 +1356,91 @@ export default function BoardClient({
     setBoardLinkUrl("");
     setBoardLinkError("");
     setIsAddingBoardLink(
+      false
+    );
+
+    await loadBoardLinks();
+  }
+
+  async function addBoardApp() {
+    const name =
+      boardAppName.trim();
+
+    const appUrl =
+      normalizeAppLaunchUrl(
+        boardAppLaunchUrl
+      );
+
+    const webUrl =
+      normalizeHttpUrl(
+        boardAppFallbackUrl
+      );
+
+    if (!name) {
+      setBoardAppError(
+        "Enter an app name."
+      );
+
+      return;
+    }
+
+    if (!appUrl) {
+      setBoardAppError(
+        "Enter a valid desktop app URL, for example zoommtg:// or slack://."
+      );
+
+      return;
+    }
+
+    if (!webUrl) {
+      setBoardAppError(
+        "Enter a valid web fallback address."
+      );
+
+      return;
+    }
+
+    const user =
+      await getCurrentUser();
+
+    if (!user) {
+      return;
+    }
+
+    const encodedUrl =
+      encodeBoardAppUrl(
+        appUrl,
+        webUrl
+      );
+
+    const {
+      error,
+    } = await supabase
+      .from("board_links")
+      .insert({
+        board_id:
+          boardId,
+        user_id:
+          user.id,
+        label:
+          name,
+        url:
+          encodedUrl,
+      });
+
+    if (error) {
+      setBoardAppError(
+        error.message
+      );
+
+      return;
+    }
+
+    setBoardAppName("");
+    setBoardAppLaunchUrl("");
+    setBoardAppFallbackUrl("");
+    setBoardAppError("");
+    setIsAddingBoardApp(
       false
     );
 
@@ -3406,22 +3679,53 @@ export default function BoardClient({
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddingBoardLink(
-                      (current) =>
-                        !current
-                    );
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingBoardLink(
+                        (current) =>
+                          !current
+                      );
 
-                    setBoardLinkError(
-                      ""
-                    );
-                  }}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-                >
-                  + Add link
-                </button>
+                      setIsAddingBoardApp(
+                        false
+                      );
+
+                      setBoardLinkError(
+                        ""
+                      );
+                    }}
+                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                  >
+                    + Add link
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingBoardApp(
+                        (current) =>
+                          !current
+                      );
+
+                      setIsAddingBoardLink(
+                        false
+                      );
+
+                      setBoardAppError(
+                        ""
+                      );
+                    }}
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-white hover:brightness-95"
+                    style={{
+                      backgroundColor:
+                        accentColor,
+                    }}
+                  >
+                    + Add app
+                  </button>
+                </div>
               </div>
 
               {isAddingBoardLink && (
@@ -3495,6 +3799,111 @@ export default function BoardClient({
                 </div>
               )}
 
+              {isAddingBoardApp && (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <input
+                      value={
+                        boardAppName
+                      }
+                      onChange={(
+                        event
+                      ) => {
+                        setBoardAppName(
+                          event.target.value
+                        );
+
+                        setBoardAppError(
+                          ""
+                        );
+                      }}
+                      placeholder="App name (e.g. Zoom)"
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+
+                    <input
+                      value={
+                        boardAppLaunchUrl
+                      }
+                      onChange={(
+                        event
+                      ) => {
+                        setBoardAppLaunchUrl(
+                          event.target.value
+                        );
+
+                        setBoardAppError(
+                          ""
+                        );
+                      }}
+                      placeholder="Desktop URL (e.g. zoommtg://)"
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+
+                    <input
+                      value={
+                        boardAppFallbackUrl
+                      }
+                      onChange={(
+                        event
+                      ) => {
+                        setBoardAppFallbackUrl(
+                          event.target.value
+                        );
+
+                        setBoardAppError(
+                          ""
+                        );
+                      }}
+                      onKeyDown={(
+                        event
+                      ) => {
+                        if (
+                          event.key ===
+                          "Enter"
+                        ) {
+                          event.preventDefault();
+                          addBoardApp();
+                        }
+                      }}
+                      placeholder="Web fallback (e.g. https://zoom.us)"
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <p className="max-w-2xl text-xs leading-5 text-slate-500">
+                      The desktop URL should use the app's registered protocol,
+                      such as zoommtg://, slack:// or msteams://. TouchBase will
+                      try the installed app first and use the web address as a
+                      fallback on both Windows and Mac.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={
+                        addBoardApp
+                      }
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white hover:brightness-95"
+                      style={{
+                        backgroundColor:
+                          accentColor,
+                      }}
+                    >
+                      Add app
+                    </button>
+                  </div>
+
+                  {boardAppError && (
+                    <p className="mt-3 text-sm text-red-600">
+                      {
+                        boardAppError
+                      }
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="mt-4 flex flex-wrap gap-3">
                 {boardLinks.map(
                   (link) => (
@@ -3504,17 +3913,27 @@ export default function BoardClient({
                       }
                       className="group/link relative"
                     >
-                      <a
-                        href={
-                          link.url
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openBoardShortcut(
+                            link
+                          )
                         }
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/60 bg-white/78 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
-                        title={getLinkLabel(
-                          link.label,
-                          link.url
-                        )}
+                        title={
+                          parseBoardAppUrl(
+                            link.url
+                          )
+                            ? `${getLinkLabel(
+                                link.label,
+                                link.url
+                              )} (open app)`
+                            : getLinkLabel(
+                                link.label,
+                                link.url
+                              )
+                        }
                         aria-label={getLinkLabel(
                           link.label,
                           link.url
@@ -3527,7 +3946,7 @@ export default function BoardClient({
                           alt=""
                           className="h-6 w-6 rounded-sm object-contain"
                         />
-                      </a>
+                      </button>
 
                       {link.user_id ===
                         currentUserId && (
