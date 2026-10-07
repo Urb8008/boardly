@@ -4419,29 +4419,35 @@ export default function BoardClient({
               </>
             )}
 
-            <div className="mt-8 border-t border-white/35 pt-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    Attachments
-                  </h3>
+            <details className="mt-6 overflow-hidden rounded-2xl border border-white/35 bg-white/10">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 font-semibold text-slate-900 transition hover:bg-white/15">
+                <span>Attachments</span>
+                <span className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                  {modalAttachments.length + pendingAttachmentFiles.length}{" "}
+                  {(modalAttachments.length + pendingAttachmentFiles.length) === 1
+                    ? "file"
+                    : "files"}
+                  <span aria-hidden="true">⌄</span>
+                </span>
+              </summary>
 
-                  <p className="mt-1 text-sm text-slate-500">
+              <div className="border-t border-white/25 px-4 pb-5 pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-slate-500">
                     Drag documents here or click to choose files.
                     Maximum 20 MB per file.
                   </p>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    attachmentInputRef.current?.click()
-                  }
-                  className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
-                >
-                  Choose files
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      attachmentInputRef.current?.click()
+                    }
+                    className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+                  >
+                    Choose files
+                  </button>
+                </div>
 
               <input
                 ref={attachmentInputRef}
@@ -4636,18 +4642,25 @@ export default function BoardClient({
                   </div>
                 </div>
               )}
-            </div>
+              </div>
+            </details>
 
-            <div className="mt-8 border-t border-white/35 pt-6">
-              <div>
-                <h3 className="font-semibold text-slate-900">
-                  Links
-                </h3>
+            <details className="mt-4 overflow-hidden rounded-2xl border border-white/35 bg-white/10">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 font-semibold text-slate-900 transition hover:bg-white/15">
+                <span>Links</span>
+                <span className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                  {modalCardLinks.length + pendingCardLinks.length}{" "}
+                  {(modalCardLinks.length + pendingCardLinks.length) === 1
+                    ? "link"
+                    : "links"}
+                  <span aria-hidden="true">⌄</span>
+                </span>
+              </summary>
 
-                <p className="mt-1 text-sm text-slate-500">
+              <div className="border-t border-white/25 px-4 pb-5 pt-4">
+                <p className="text-sm text-slate-500">
                   Add a website, Google Doc, Drive folder, meeting link or any web page.
                 </p>
-              </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
                 <input
@@ -4825,34 +4838,19 @@ export default function BoardClient({
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="mt-8 border-t border-white/35 pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    Checklist
-                  </h3>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    {
-                      modalCompleted
-                    }
-                    /{modalTotal}{" "}
-                    complete
-                  </p>
-                </div>
-
-                {modalTotal > 0 && (
-                  <span className="text-sm font-medium text-slate-600">
-                    {
-                      modalPercentage
-                    }
-                    %
-                  </span>
-                )}
               </div>
+            </details>
 
+            <details className="mt-4 overflow-hidden rounded-2xl border border-white/35 bg-white/10">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 font-semibold text-slate-900 transition hover:bg-white/15">
+                <span>Checklist</span>
+                <span className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                  {modalCompleted}/{modalTotal} complete
+                  <span aria-hidden="true">⌄</span>
+                </span>
+              </summary>
+
+              <div className="border-t border-white/25 px-4 pb-5 pt-4">
               {modalTotal > 0 && (
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
                   <div
@@ -4965,26 +4963,21 @@ export default function BoardClient({
                   </div>
                 )}
               </div>
-            </div>
+              </div>
+            </details>
 
             {editingCard && (
-              <div className="mt-8 border-t border-white/35 pt-6">
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    Comments
-                  </h3>
+              <details className="mt-4 overflow-hidden rounded-2xl border border-white/35 bg-white/10">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 font-semibold text-slate-900 transition hover:bg-white/15">
+                  <span>Comments</span>
+                  <span className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                    {modalComments.length}{" "}
+                    {modalComments.length === 1 ? "comment" : "comments"}
+                    <span aria-hidden="true">⌄</span>
+                  </span>
+                </summary>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    {
-                      modalComments.length
-                    }{" "}
-                    {modalComments.length ===
-                    1
-                      ? "comment"
-                      : "comments"}
-                  </p>
-                </div>
-
+                <div className="border-t border-white/25 px-4 pb-5 pt-4">
                 <div className="mt-4 flex gap-2">
                   <textarea
                     value={
@@ -5062,7 +5055,8 @@ export default function BoardClient({
                     </div>
                   )}
                 </div>
-              </div>
+                </div>
+              </details>
             )}
 
             {cardSaveError && (
