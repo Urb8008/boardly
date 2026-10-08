@@ -139,7 +139,7 @@ body::after {
 @media (max-width: 640px) {
 body::after {
     position: absolute;
-    right: 14px;
+    right: 22px;
     top: calc(env(safe-area-inset-top, 0px) + 10px);
     bottom: auto;
 
