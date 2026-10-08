@@ -340,6 +340,12 @@ export default function BoardsPage() {
   const [linkError, setLinkError] =
     useState("");
 
+  const [openBoardMenuId, setOpenBoardMenuId] =
+    useState<number | null>(null);
+
+  const [openBoardPreferencesId, setOpenBoardPreferencesId] =
+    useState<number | null>(null);
+
   const [currentUserId, setCurrentUserId] =
     useState<string | null>(null);
 
@@ -1482,9 +1488,15 @@ export default function BoardsPage() {
                             <div className="group/menu relative">
                               <button
                                 type="button"
-                                onClick={(event) =>
-                                  event.stopPropagation()
-                                }
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setOpenBoardPreferencesId(null);
+                                  setOpenBoardMenuId((current) =>
+                                    current === board.id
+                                      ? null
+                                      : board.id
+                                  );
+                                }}
                                 className="flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-slate-700 shadow-sm backdrop-blur transition active:scale-95 hover:bg-white hover:shadow-md sm:h-9 sm:w-9"
                                 aria-label={`Open ${board.name} menu`}
                               >
@@ -1496,7 +1508,11 @@ export default function BoardsPage() {
                             </button>
 
                             <div
-                              className="invisible absolute bottom-full right-0 z-[100] mb-2 min-w-max translate-y-1 rounded-2xl border border-white/70 bg-white/90 p-2 text-left opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100"
+                              className={`absolute right-0 top-full z-[100] mt-2 min-w-max rounded-2xl border border-white/70 bg-white/95 p-2 text-left shadow-xl backdrop-blur-xl transition-all duration-150 sm:bottom-full sm:top-auto sm:mb-2 sm:mt-0 ${
+                                openBoardMenuId === board.id
+                                  ? "visible translate-y-0 opacity-100"
+                                  : "invisible translate-y-1 opacity-0 sm:group-hover/menu:visible sm:group-hover/menu:translate-y-0 sm:group-hover/menu:opacity-100"
+                              }`}
                               onClick={(event) =>
                                 event.stopPropagation()
                               }
@@ -1505,11 +1521,11 @@ export default function BoardsPage() {
                                 {isOwner && (
                                   <button
                                     type="button"
-                                    onClick={() =>
-                                      openRenameModal(
-                                        board
-                                      )
-                                    }
+                                    onClick={() => {
+                                      setOpenBoardMenuId(null);
+                                      setOpenBoardPreferencesId(null);
+                                      openRenameModal(board);
+                                    }}
                                     className="inline-flex w-auto items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
                                     style={{
                                       backgroundColor:
@@ -1522,11 +1538,11 @@ export default function BoardsPage() {
 
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    openLinkModal(
-                                      board
-                                    )
-                                  }
+                                  onClick={() => {
+                                    setOpenBoardMenuId(null);
+                                    setOpenBoardPreferencesId(null);
+                                    openLinkModal(board);
+                                  }}
                                   className="inline-flex w-auto items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
                                   style={{
                                     backgroundColor:
@@ -1540,6 +1556,14 @@ export default function BoardsPage() {
                                   <div className="group/preferences relative">
                                     <button
                                       type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        setOpenBoardPreferencesId((current) =>
+                                          current === board.id
+                                            ? null
+                                            : board.id
+                                        );
+                                      }}
                                       className="inline-flex w-auto items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
                                       style={{
                                         backgroundColor:
@@ -1554,7 +1578,11 @@ export default function BoardsPage() {
                                     </button>
 
                                     <div
-                                      className="invisible absolute right-full top-0 z-[120] mr-2 w-52 translate-x-1 rounded-2xl border border-white/70 bg-white/95 p-3 opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/preferences:visible group-hover/preferences:translate-x-0 group-hover/preferences:opacity-100"
+                                      className={`absolute right-0 top-full z-[120] mt-2 w-52 rounded-2xl border border-white/70 bg-white/95 p-3 shadow-xl backdrop-blur-xl transition-all duration-150 sm:right-full sm:top-0 sm:mr-2 sm:mt-0 ${
+                                        openBoardPreferencesId === board.id
+                                          ? "visible translate-x-0 opacity-100"
+                                          : "invisible translate-x-1 opacity-0 sm:group-hover/preferences:visible sm:group-hover/preferences:translate-x-0 sm:group-hover/preferences:opacity-100"
+                                      }`}
                                       onClick={(event) =>
                                         event.stopPropagation()
                                       }
@@ -1690,11 +1718,11 @@ export default function BoardsPage() {
                                 {isOwner && (
                                   <button
                                     type="button"
-                                    onClick={() =>
-                                      setDeleteTarget(
-                                        board
-                                      )
-                                    }
+                                    onClick={() => {
+                                      setOpenBoardMenuId(null);
+                                      setOpenBoardPreferencesId(null);
+                                      setDeleteTarget(board);
+                                    }}
                                     className="inline-flex w-auto items-center rounded-lg bg-gradient-to-b from-red-400 via-red-500 to-red-700 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-md"
                                   >
                                     Delete
