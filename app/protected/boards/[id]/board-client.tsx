@@ -306,6 +306,11 @@ export default function BoardClient({
     setCurrentUserId,
   ] = useState<string | null>(null);
 
+  const [
+    unreadChatCount,
+    setUnreadChatCount,
+  ] = useState(0);
+
   const [board, setBoard] =
     useState<Board | null>(null);
 
@@ -609,6 +614,52 @@ export default function BoardClient({
     initializeBoard();
   }, []);
 
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    void loadUnreadChatCount(currentUserId);
+
+    const messageChannel =
+      supabase
+        .channel(`board-unread-messages-${boardId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "board_messages",
+            filter: `board_id=eq.${boardId}`,
+          },
+          () => {
+            void loadUnreadChatCount(currentUserId);
+          }
+        )
+        .subscribe();
+
+    const readChannel =
+      supabase
+        .channel(`board-message-reads-${boardId}-${currentUserId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "board_message_reads",
+            filter: `board_id=eq.${boardId}`,
+          },
+          () => {
+            void loadUnreadChatCount(currentUserId);
+          }
+        )
+        .subscribe();
+
+    return () => {
+      void supabase.removeChannel(messageChannel);
+      void supabase.removeChannel(readChannel);
+    };
+  }, [boardId, currentUserId]);
+
   async function getCurrentUser() {
     const {
       data: { user },
@@ -641,9 +692,58 @@ export default function BoardClient({
       loadCards(),
       loadBoardLinks(),
       loadPreferences(user.id),
+      loadUnreadChatCount(user.id),
     ]);
 
     setLoading(false);
+  }
+
+  async function loadUnreadChatCount(
+    userId: string
+  ) {
+    const { data: readState, error: readError } =
+      await supabase
+        .from("board_message_reads")
+        .select("last_read_at")
+        .eq("board_id", boardId)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+    if (readError) {
+      console.error(
+        "Error loading chat read state:",
+        readError.message
+      );
+      return;
+    }
+
+    let query = supabase
+      .from("board_messages")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("board_id", boardId)
+      .neq("user_id", userId);
+
+    if (readState?.last_read_at) {
+      query = query.gt(
+        "created_at",
+        readState.last_read_at
+      );
+    }
+
+    const { count, error } = await query;
+
+    if (error) {
+      console.error(
+        "Error loading unread chat count:",
+        error.message
+      );
+      return;
+    }
+
+    setUnreadChatCount(count || 0);
   }
 
   async function loadPreferences(
@@ -4026,7 +4126,15 @@ export default function BoardClient({
             <span className="text-lg">▣</span><span>Calendar</span>
           </button>
           <button type="button" onClick={() => router.push(`/protected/boards/${boardId}/messenger`)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
-            <span className="text-lg">✉</span><span>Chat</span>
+            <span className="relative text-lg">
+              ✉
+              {unreadChatCount > 0 && (
+                <span className="absolute -right-3 -top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow">
+                  {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                </span>
+              )}
+            </span>
+            <span>Chat</span>
           </button>
           <button type="button" onClick={() => setMobileMoreOpen((current) => !current)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
             <span className="text-lg">•••</span><span>More</span>

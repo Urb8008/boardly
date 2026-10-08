@@ -428,7 +428,11 @@ export default function MessengerClient({
               `board_id=eq.${boardId}`,
           },
           () => {
-            loadMessages();
+            void loadMessages();
+
+            if (document.visibilityState === "visible") {
+              void markChatRead();
+            }
           }
         )
         .subscribe();
@@ -468,6 +472,27 @@ export default function MessengerClient({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void markChatRead();
+      }
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+    };
+  }, [boardId]);
 
   useEffect(() => {
     if (
@@ -625,10 +650,48 @@ export default function MessengerClient({
       loadPreferences(user.id),
     ]);
 
+    await markChatRead(user.id);
+
     setLoading(false);
   }
 
 
+
+  async function markChatRead(
+    userId?: string
+  ) {
+    let resolvedUserId = userId || currentUserId;
+
+    if (!resolvedUserId) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      resolvedUserId = user?.id || null;
+    }
+
+    if (!resolvedUserId) return;
+
+    const { error } = await supabase
+      .from("board_message_reads")
+      .upsert(
+        {
+          board_id: boardId,
+          user_id: resolvedUserId,
+          last_read_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "board_id,user_id",
+        }
+      );
+
+    if (error) {
+      console.error(
+        "Error marking chat as read:",
+        error.message
+      );
+    }
+  }
 
   async function loadPreferences(
     userId: string
