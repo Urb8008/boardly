@@ -109,41 +109,40 @@ div.border-b button.font-bold.text-slate-900::before {
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
 }
 
-/* Urban logo fixed in bottom-right corner of every page */
+/* Urban logo fixed near top-left, clear of phone status bar */
 body::after {
   content: "";
   position: fixed;
 
-  right: 18px;
-  bottom: 18px;
+  left: 14px;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
 
-  width: 64px;
-  height: 64px;
+  width: 46px;
+  height: 46px;
 
   background-image: url("/urban-logo.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 
-  border-radius: 18px;
- 
+  border-radius: 12px;
 
   box-shadow:
-    0 10px 28px rgba(15, 23, 42, 0.28),
-    0 2px 8px rgba(15, 23, 42, 0.15);
+    0 6px 18px rgba(15, 23, 42, 0.22),
+    0 2px 6px rgba(15, 23, 42, 0.12);
 
-  z-index: 9999;
+  z-index: 30;
   pointer-events: none;
 }
 
 /* Slightly smaller on phones */
 @media (max-width: 640px) {
   body::after {
-    width: 52px;
-    height: 52px;
-    right: 12px;
-    bottom: 12px;
-    border-radius: 14px;
+    left: 12px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
   }
 
   div.border-b button.font-bold.text-slate-900::before {
@@ -152,6 +151,7 @@ body::after {
     border-radius: 8px;
   }
 }
+
 /* Softer, more transparent top navigation bar */
 div.border-b.bg-white\/90 {
   background: rgba(226, 232, 240, 0.62) !important;

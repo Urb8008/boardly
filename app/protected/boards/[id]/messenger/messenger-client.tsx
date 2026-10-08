@@ -1342,6 +1342,30 @@ export default function MessengerClient({
               "Board"}{" "}
             · Team conversation
           </p>
+
+          <div className="mt-4 md:hidden">
+            {activeCall ? (
+              <button
+                type="button"
+                onClick={joinVideoCall}
+                className="w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
+              >
+                🎥 Join video call
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={startVideoCall}
+                disabled={callBusy}
+                className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: accentColor }}
+              >
+                {callBusy
+                  ? "Starting..."
+                  : "🎥 Start video call"}
+              </button>
+            )}
+          </div>
         </div>
 
         {callError && (
