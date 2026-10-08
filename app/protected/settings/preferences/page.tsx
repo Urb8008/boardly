@@ -642,7 +642,7 @@ export default function PreferencesPage() {
       style={{ ...pageWallpaperStyle, ...fontPreferenceStyle }}
     >
       <style>{FONT_PREFERENCE_CSS}</style>
-      <div className="mx-auto max-w-5xl px-6 py-10">
+      <div className="mx-auto max-w-5xl px-4 py-5 pb-28 sm:px-6 sm:py-10 md:pb-10">
         <div
           className="mb-8 rounded-3xl border border-white/40 p-6 shadow-xl backdrop-blur-md"
           style={{
@@ -655,13 +655,13 @@ export default function PreferencesPage() {
             onClick={() =>
               router.back()
             }
-            className="mb-4 inline-flex items-center rounded-xl border border-white/30 px-4 py-2.5 text-base font-bold text-white shadow-md transition hover:brightness-110 hover:shadow-lg"
+            className="mb-4 hidden items-center rounded-xl border border-white/30 px-4 py-2.5 text-base font-bold text-white shadow-md transition hover:brightness-110 hover:shadow-lg md:inline-flex"
             style={{ backgroundColor: selectedTab?.color || "#475569" }}
           >
             ← Back
           </button>
 
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
             Preferences
           </h1>
 
@@ -1135,6 +1135,14 @@ export default function PreferencesPage() {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-3 gap-1">
+          <button type="button" onClick={() => router.back()} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"><span className="text-lg">←</span><span>Back</span></button>
+          <button type="button" onClick={() => router.push("/protected/boards")} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"><span className="text-lg">▦</span><span>Boards</span></button>
+          <button type="button" className="flex flex-col items-center rounded-xl bg-slate-900 px-2 py-2 text-xs font-semibold text-white"><span className="text-lg">⚙</span><span>Preferences</span></button>
         </div>
       </div>
     </div>

@@ -299,6 +299,8 @@ export default function BoardClient({
   const router = useRouter();
   const supabase = createClient();
 
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+
   const [
     currentUserId,
     setCurrentUserId,
@@ -3385,7 +3387,7 @@ export default function BoardClient({
             status
           )
         }
-        className="flex min-h-[420px] w-80 flex-col rounded-2xl border border-white/50 p-4 shadow-lg backdrop-blur-md"
+        className="flex min-h-[420px] w-full flex-col rounded-2xl border border-white/50 p-4 shadow-lg backdrop-blur-md md:w-80 md:flex-none"
         style={{
           backgroundColor:
             panelBackgroundColor,
@@ -3515,7 +3517,7 @@ export default function BoardClient({
         }}
       >
         <style>{FONT_PREFERENCE_CSS}</style>
-        <div className="border-b border-white/30 bg-white/90 backdrop-blur">
+        <div className="hidden border-b border-white/30 bg-white/90 backdrop-blur md:block">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
             <button
               type="button"
@@ -3585,7 +3587,7 @@ export default function BoardClient({
           </div>
         </div>
 
-        <div className="mx-auto max-w-7xl p-8">
+        <div className="mx-auto max-w-7xl p-4 pb-28 sm:p-8 sm:pb-28 md:pb-8">
           <div
             className="rounded-3xl border border-white/40 p-6 shadow-xl backdrop-blur-md"
             style={{
@@ -3600,7 +3602,7 @@ export default function BoardClient({
                   "/protected/boards"
                 )
               }
-              className="inline-flex items-center rounded-xl border border-white/30 px-4 py-2.5 text-base font-bold text-white shadow-md transition hover:brightness-110 hover:shadow-lg"
+              className="hidden items-center rounded-xl border border-white/30 px-4 py-2.5 text-base font-bold text-white shadow-md transition hover:brightness-110 hover:shadow-lg md:inline-flex"
             style={{ backgroundColor: tabColor }}
             >
               ← Back to boards
@@ -3609,7 +3611,7 @@ export default function BoardClient({
             <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                  <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
                     {board?.name ||
                       "Untitled board"}
                   </h1>
@@ -3984,7 +3986,7 @@ export default function BoardClient({
               </div>
             </div>
 
-            <div className="mt-8 flex gap-6 overflow-x-auto pb-8">
+            <div className="mt-6 grid gap-4 pb-4 md:mt-8 md:flex md:gap-6 md:overflow-x-auto md:pb-8">
               <BoardColumn
                 title="To Do"
                 status="todo"
@@ -4012,6 +4014,40 @@ export default function BoardClient({
           </div>
         </div>
       </main>
+
+
+      {/* MOBILE NAVIGATION */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
+          <button type="button" onClick={() => setMobileMoreOpen(false)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-white" style={{ backgroundColor: accentColor }}>
+            <span className="text-lg">▦</span><span>Board</span>
+          </button>
+          <button type="button" onClick={() => router.push(`/protected/boards/${boardId}/calendar`)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+            <span className="text-lg">▣</span><span>Calendar</span>
+          </button>
+          <button type="button" onClick={() => router.push(`/protected/boards/${boardId}/messenger`)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+            <span className="text-lg">✉</span><span>Chat</span>
+          </button>
+          <button type="button" onClick={() => setMobileMoreOpen((current) => !current)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+            <span className="text-lg">•••</span><span>More</span>
+          </button>
+        </div>
+      </div>
+
+      {mobileMoreOpen && (
+        <div className="fixed inset-x-3 bottom-20 z-50 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl md:hidden">
+          <div className="grid gap-2">
+            <button type="button" onClick={() => router.push("/protected/boards")} className="rounded-xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-800">All boards</button>
+            <button type="button" onClick={() => router.push("/protected/settings/preferences")} className="rounded-xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-800">Preferences</button>
+            {isOwner && (
+              <>
+                <button type="button" onClick={() => { setMobileMoreOpen(false); openMembersModal(); }} className="rounded-xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-800">Manage members</button>
+                <button type="button" onClick={() => { setMobileMoreOpen(false); openInviteModal(); }} className="rounded-xl px-4 py-3 text-left text-sm font-semibold text-white" style={{ backgroundColor: accentColor }}>Invite member</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* MANAGE MEMBERS MODAL */}
 

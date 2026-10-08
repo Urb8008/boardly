@@ -1184,7 +1184,7 @@ export default function BoardsPage() {
           <div className="animate-pulse rounded-3xl bg-white/70 p-8 shadow-sm backdrop-blur">
             <div className="h-8 w-48 rounded bg-slate-200" />
 
-            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
               <div className="h-52 rounded-2xl bg-white/80" />
               <div className="h-52 rounded-2xl bg-white/80" />
               <div className="h-52 rounded-2xl bg-white/80" />
@@ -1204,7 +1204,7 @@ export default function BoardsPage() {
         <style>{FONT_PREFERENCE_CSS}</style>
         {/* TOP NAVIGATION */}
 
-        <div className="border-b border-white/30 bg-white/90 shadow-sm backdrop-blur">
+        <div className="hidden border-b border-white/30 bg-white/90 shadow-sm backdrop-blur md:block">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 sm:px-8">
             <button
               type="button"
@@ -1256,16 +1256,16 @@ export default function BoardsPage() {
 
         {/* PAGE CONTENT */}
 
-        <div className="mx-auto max-w-7xl p-6 sm:p-8">
+        <div className="mx-auto max-w-7xl p-3 pb-32 sm:p-8 sm:pb-28 md:pb-8">
           <div
-            className="overflow-visible rounded-3xl border border-white/40 p-6 shadow-xl backdrop-blur-md sm:p-8"
+            className="overflow-visible rounded-3xl border border-white/40 p-4 shadow-xl backdrop-blur-md sm:p-8"
             style={{
               backgroundColor: panelBackgroundColor,
             }}
           >
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
                   Your boards
                 </h1>
 
@@ -1329,7 +1329,7 @@ export default function BoardsPage() {
                 </button>
               </div>
             ) : (
-              <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
                 {boards.map((board) => {
                   const stats =
                     boardStats[
@@ -1383,10 +1383,10 @@ export default function BoardsPage() {
                             openBoard(board.id);
                           }
                         }}
-                        className="w-full cursor-pointer p-6 text-left"
+                        className="w-full cursor-pointer p-4 text-left sm:p-6"
                       >
-                        <div className="flex items-start justify-between gap-4">
-                          <h2 className="text-xl font-bold text-slate-900">
+                        <div className="flex items-center justify-between gap-3 sm:items-start sm:gap-4">
+                          <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
                             {board.name}
                           </h2>
 
@@ -1485,13 +1485,13 @@ export default function BoardsPage() {
                                 onClick={(event) =>
                                   event.stopPropagation()
                                 }
-                                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/75 text-slate-700 shadow-sm backdrop-blur transition hover:bg-white hover:shadow-md"
+                                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-slate-700 shadow-sm backdrop-blur transition active:scale-95 hover:bg-white hover:shadow-md sm:h-9 sm:w-9"
                                 aria-label={`Open ${board.name} menu`}
                               >
                               <span className="flex flex-col gap-[3px]">
-                                <span className="h-[2px] w-4 rounded-full bg-current" />
-                                <span className="h-[2px] w-4 rounded-full bg-current" />
-                                <span className="h-[2px] w-4 rounded-full bg-current" />
+                                <span className="h-[2px] w-5 rounded-full bg-current sm:w-4" />
+                                <span className="h-[2px] w-5 rounded-full bg-current sm:w-4" />
+                                <span className="h-[2px] w-5 rounded-full bg-current sm:w-4" />
                               </span>
                             </button>
 
@@ -1780,13 +1780,51 @@ export default function BoardsPage() {
         </div>
       </main>
 
+
+      {/* MOBILE NAVIGATION */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/95 px-3 pt-2 shadow-[0_-10px_30px_rgba(15,23,42,0.14)] backdrop-blur-xl md:hidden"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        aria-label="Mobile navigation"
+      >
+        <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
+          <button
+            type="button"
+            className="flex min-h-14 flex-col items-center justify-center rounded-2xl px-3 py-2 text-xs font-bold text-white shadow-sm"
+            style={{ backgroundColor: accentColor }}
+            aria-current="page"
+          >
+            <span className="text-xl leading-none">▦</span>
+            <span className="mt-1">Boards</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push("/protected/settings/preferences")}
+            className="flex min-h-14 flex-col items-center justify-center rounded-2xl px-3 py-2 text-xs font-semibold text-slate-600 transition active:scale-95 active:bg-slate-100"
+          >
+            <span className="text-xl leading-none">⚙</span>
+            <span className="mt-1">Preferences</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={logout}
+            className="flex min-h-14 flex-col items-center justify-center rounded-2xl px-3 py-2 text-xs font-semibold text-slate-600 transition active:scale-95 active:bg-slate-100"
+          >
+            <span className="text-xl leading-none">↪</span>
+            <span className="mt-1">Log out</span>
+          </button>
+        </div>
+      </nav>
+
       {/* CREATE BOARD MODAL */}
 
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
                 Create board
               </h2>
 
@@ -1854,7 +1892,7 @@ export default function BoardsPage() {
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">
+                <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
                   Add link
                 </h2>
 
@@ -1960,7 +1998,7 @@ export default function BoardsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
                 Rename board
               </h2>
 
@@ -2025,7 +2063,7 @@ export default function BoardsPage() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-xl font-bold text-slate-900">
+            <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
               Delete board?
             </h2>
 

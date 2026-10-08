@@ -225,6 +225,8 @@ export default function MessengerClient({
   const supabase =
     createClient();
 
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+
   const [
     board,
     setBoard,
@@ -1225,7 +1227,7 @@ export default function MessengerClient({
       style={{ ...wallpaperStyle, ...fontPreferenceStyle }}
     >
         <style>{FONT_PREFERENCE_CSS}</style>
-      <div className="border-b border-white/30 bg-white/90 backdrop-blur">
+      <div className="hidden border-b border-white/30 bg-white/90 backdrop-blur md:block">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
           <button
             type="button"
@@ -1310,7 +1312,7 @@ export default function MessengerClient({
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-5 pb-28 sm:px-6 sm:py-8 md:pb-8">
         <div
           className="mb-5 rounded-2xl p-5 shadow-sm backdrop-blur"
           style={{
@@ -1325,13 +1327,13 @@ export default function MessengerClient({
                 `/protected/boards/${boardId}`
               )
             }
-            className="inline-flex items-center rounded-xl border border-white/30 px-4 py-2.5 text-base font-bold text-white shadow-md transition hover:brightness-110 hover:shadow-lg"
+            className="hidden items-center rounded-xl border border-white/30 px-4 py-2.5 text-base font-bold text-white shadow-md transition hover:brightness-110 hover:shadow-lg md:inline-flex"
             style={{ backgroundColor: tabColor }}
           >
             ← Back to board
           </button>
 
-          <h1 className="mt-4 text-3xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 md:mt-4 md:text-3xl">
             Messenger
           </h1>
 
@@ -1656,6 +1658,31 @@ export default function MessengerClient({
           </div>
         </div>
       </div>
+
+
+      {mobileMoreOpen && (
+        <div className="fixed inset-x-3 bottom-20 z-50 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl md:hidden">
+          <div className="grid gap-2">
+            {activeCall ? (
+              <button type="button" onClick={() => { setMobileMoreOpen(false); joinVideoCall(); }} className="rounded-xl bg-green-600 px-4 py-3 text-left text-sm font-semibold text-white">🎥 Join call</button>
+            ) : (
+              <button type="button" onClick={() => { setMobileMoreOpen(false); startVideoCall(); }} disabled={callBusy} className="rounded-xl px-4 py-3 text-left text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: accentColor }}>{callBusy ? "Starting..." : "🎥 Start call"}</button>
+            )}
+            <button type="button" onClick={() => router.push("/protected/boards")} className="rounded-xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-800">All boards</button>
+            <button type="button" onClick={() => router.push("/protected/settings/preferences")} className="rounded-xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-800">Preferences</button>
+          </div>
+        </div>
+      )}
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
+          <button type="button" onClick={() => router.push(`/protected/boards/${boardId}`)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"><span className="text-lg">▦</span><span>Board</span></button>
+          <button type="button" onClick={() => router.push(`/protected/boards/${boardId}/calendar`)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"><span className="text-lg">▣</span><span>Calendar</span></button>
+          <button type="button" onClick={() => setMobileMoreOpen(false)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-white" style={{ backgroundColor: accentColor }}><span className="text-lg">✉</span><span>Chat</span></button>
+          <button type="button" onClick={() => setMobileMoreOpen((current) => !current)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"><span className="text-lg">•••</span><span>More</span></button>
+        </div>
+      </div>
+
     </main>
   );
 }
