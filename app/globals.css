@@ -109,40 +109,40 @@ div.border-b button.font-bold.text-slate-900::before {
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
 }
 
-/* Urban logo fixed near top-left, clear of phone status bar */
+/* Urban logo fixed near top-right, clear of phone status bar and page text */
 body::after {
   content: "";
   position: fixed;
 
-  left: 14px;
-  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  right: 16px;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
 
-  width: 46px;
-  height: 46px;
+  width: 58px;
+  height: 58px;
 
   background-image: url("/urban-logo.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 
-  border-radius: 12px;
+  border-radius: 15px;
 
   box-shadow:
-    0 6px 18px rgba(15, 23, 42, 0.22),
-    0 2px 6px rgba(15, 23, 42, 0.12);
+    0 8px 22px rgba(15, 23, 42, 0.24),
+    0 2px 7px rgba(15, 23, 42, 0.12);
 
   z-index: 30;
   pointer-events: none;
 }
 
-/* Slightly smaller on phones */
+/* Phone placement: larger but kept away from content and the system status bar */
 @media (max-width: 640px) {
   body::after {
-    left: 12px;
-    top: calc(env(safe-area-inset-top, 0px) + 12px);
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    right: 14px;
+    top: calc(env(safe-area-inset-top, 0px) + 14px);
+    width: 52px;
+    height: 52px;
+    border-radius: 13px;
   }
 
   div.border-b button.font-bold.text-slate-900::before {
