@@ -137,11 +137,8 @@ body::after {
 
 /* Phone: keep the logo top-right and reserve clear space for it */
 @media (max-width: 640px) {
-  body {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 72px);
-  }
-
-  body::after {
+body::after {
+    position: absolute;
     right: 14px;
     top: calc(env(safe-area-inset-top, 0px) + 10px);
     bottom: auto;
@@ -151,6 +148,16 @@ body::after {
     border-radius: 13px;
 
     z-index: 30;
+  }
+
+
+  /* Keep the first mobile page heading clear of the logo */
+  .touchbase-font-preferences h1:first-of-type {
+    max-width: calc(100% - 76px);
+  }
+
+  .touchbase-font-preferences h1:first-of-type + p {
+    max-width: calc(100% - 76px);
   }
 
   div.border-b button.font-bold.text-slate-900::before {
