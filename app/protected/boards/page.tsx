@@ -1496,7 +1496,7 @@ export default function BoardsPage() {
                             </button>
 
                             <div
-                              className="invisible absolute bottom-full right-0 z-[100] mb-2 min-w-max translate-y-1 rounded-2xl border border-white/70 bg-white/90 p-2 text-left opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100"
+                              className="invisible absolute bottom-full right-0 z-[220] mb-2 w-56 max-w-[calc(100vw-2rem)] translate-y-1 rounded-2xl border border-white/70 bg-white/95 p-3 text-left opacity-0 shadow-2xl backdrop-blur-xl transition-all duration-150 group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100"
                               onClick={(event) =>
                                 event.stopPropagation()
                               }
@@ -1510,7 +1510,7 @@ export default function BoardsPage() {
                                         board
                                       )
                                     }
-                                    className="inline-flex w-auto items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
+                                    className="inline-flex w-full items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
                                     style={{
                                       backgroundColor:
                                         accentColor,
@@ -1527,7 +1527,7 @@ export default function BoardsPage() {
                                       board
                                     )
                                   }
-                                  className="inline-flex w-auto items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
+                                  className="inline-flex w-full items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
                                   style={{
                                     backgroundColor:
                                       accentColor,
@@ -1540,7 +1540,7 @@ export default function BoardsPage() {
                                   <div className="group/preferences relative">
                                     <button
                                       type="button"
-                                      className="inline-flex w-auto items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
+                                      className="inline-flex w-full items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
                                       style={{
                                         backgroundColor:
                                           accentColor,
@@ -1695,7 +1695,7 @@ export default function BoardsPage() {
                                         board
                                       )
                                     }
-                                    className="inline-flex w-auto items-center rounded-lg bg-gradient-to-b from-red-400 via-red-500 to-red-700 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-md"
+                                    className="inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-b from-red-400 via-red-500 to-red-700 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-md"
                                   >
                                     Delete
                                   </button>
@@ -1710,7 +1710,7 @@ export default function BoardsPage() {
                                     Links
                                   </p>
 
-                                  <div className="flex flex-wrap gap-2">
+                                  <div className="grid grid-cols-4 gap-2">
                                     {links.map(
                                       (link) => (
                                         <div
