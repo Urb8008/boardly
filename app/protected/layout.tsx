@@ -1,7 +1,14 @@
+import PushRegistration from "./push-registration";
+
 export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <PushRegistration />
+      {children}
+    </>
+  );
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "691789881282",
+    "project_id": "touchbase-b7e23",
+    "storage_bucket": "touchbase-b7e23.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:691789881282:android:07938dbe265f5644db805b",
+        "android_client_info": {
+          "package_name": "es.urbanenglish.touchbase"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDE3t6dPg1BZ4F5dt4CBCTzDROW37ryO3g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
