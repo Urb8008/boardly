@@ -1,4 +1,5 @@
 import PushRegistration from "./push-registration";
+import MobileNavigationEnhancer from "./mobile-navigation-enhancer";
 
 export default function ProtectedLayout({
   children,
@@ -8,6 +9,7 @@ export default function ProtectedLayout({
   return (
     <>
       <PushRegistration />
+      <MobileNavigationEnhancer />
       {children}
     </>
   );
