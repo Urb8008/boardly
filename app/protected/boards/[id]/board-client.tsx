@@ -328,17 +328,17 @@ export default function BoardClient({
     Capacitor.getPlatform() === "android";
 
   const [
-    nativeDraggingCardId,
-    setNativeDraggingCardId,
-  ] = useState<number | null>(null);
-
-  const [
     nativeDragOverStatus,
     setNativeDragOverStatus,
   ] = useState<CardStatus | null>(null);
 
   const nativeDragCardIdRef =
     useRef<number | null>(null);
+
+  const nativeDragStartRef =
+    useRef<{ x: number; y: number } | null>(
+      null
+    );
 
   const nativeDragPointRef =
     useRef<{ x: number; y: number } | null>(
@@ -352,6 +352,12 @@ export default function BoardClient({
 
   const nativeDragActiveRef =
     useRef(false);
+
+  const nativeDragGhostRef =
+    useRef<HTMLDivElement | null>(null);
+
+  const nativeAutoScrollFrameRef =
+    useRef<number | null>(null);
 
   const suppressCardClickRef =
     useRef(false);
@@ -3137,6 +3143,37 @@ export default function BoardClient({
     event.preventDefault();
   }
 
+  function clearNativeDragTimer() {
+    if (nativeDragTimerRef.current) {
+      clearTimeout(
+        nativeDragTimerRef.current
+      );
+
+      nativeDragTimerRef.current =
+        null;
+    }
+  }
+
+  function stopNativeAutoScroll() {
+    if (
+      nativeAutoScrollFrameRef.current !==
+      null
+    ) {
+      cancelAnimationFrame(
+        nativeAutoScrollFrameRef.current
+      );
+
+      nativeAutoScrollFrameRef.current =
+        null;
+    }
+  }
+
+  function removeNativeDragGhost() {
+    nativeDragGhostRef.current?.remove();
+    nativeDragGhostRef.current =
+      null;
+  }
+
   function getNativeDropStatus(
     x: number,
     y: number
@@ -3169,19 +3206,81 @@ export default function BoardClient({
     return null;
   }
 
-  function clearNativeDragTimer() {
-    if (nativeDragTimerRef.current) {
-      clearTimeout(
-        nativeDragTimerRef.current
-      );
+  function updateNativeDragGhost(
+    x: number,
+    y: number
+  ) {
+    const ghost =
+      nativeDragGhostRef.current;
 
-      nativeDragTimerRef.current =
-        null;
+    if (!ghost) {
+      return;
     }
+
+    ghost.style.left =
+      `${x}px`;
+
+    ghost.style.top =
+      `${y}px`;
+  }
+
+  function startNativeAutoScroll() {
+    stopNativeAutoScroll();
+
+    const step = () => {
+      if (
+        !nativeDragActiveRef.current ||
+        !nativeDragPointRef.current
+      ) {
+        nativeAutoScrollFrameRef.current =
+          null;
+        return;
+      }
+
+      const point =
+        nativeDragPointRef.current;
+
+      let amount = 0;
+
+      if (point.y < 125) {
+        amount = -16;
+      } else if (
+        point.y >
+        window.innerHeight - 155
+      ) {
+        amount = 16;
+      }
+
+      if (amount !== 0) {
+        window.scrollBy(
+          0,
+          amount
+        );
+
+        setNativeDragOverStatus(
+          getNativeDropStatus(
+            point.x,
+            point.y
+          )
+        );
+      }
+
+      nativeAutoScrollFrameRef.current =
+        requestAnimationFrame(
+          step
+        );
+    };
+
+    nativeAutoScrollFrameRef.current =
+      requestAnimationFrame(
+        step
+      );
   }
 
   function cleanupNativeDrag() {
     clearNativeDragTimer();
+    stopNativeAutoScroll();
+    removeNativeDragGhost();
 
     document.removeEventListener(
       "touchmove",
@@ -3201,19 +3300,131 @@ export default function BoardClient({
     nativeDragCardIdRef.current =
       null;
 
+    nativeDragStartRef.current =
+      null;
+
     nativeDragPointRef.current =
       null;
 
     nativeDragActiveRef.current =
       false;
 
-    setNativeDraggingCardId(
-      null
-    );
-
     setNativeDragOverStatus(
       null
     );
+  }
+
+  function beginNativeCardDrag(
+    cardElement: HTMLDivElement,
+    cardId: number,
+    x: number,
+    y: number
+  ) {
+    nativeDragActiveRef.current =
+      true;
+
+    suppressCardClickRef.current =
+      true;
+
+    nativeDragCardIdRef.current =
+      cardId;
+
+    nativeDragPointRef.current = {
+      x,
+      y,
+    };
+
+    const rect =
+      cardElement.getBoundingClientRect();
+
+    const ghost =
+      cardElement.cloneNode(
+        true
+      ) as HTMLDivElement;
+
+    ghost.removeAttribute("draggable");
+
+    ghost.style.position =
+      "fixed";
+
+    ghost.style.zIndex =
+      "9999";
+
+    ghost.style.width =
+      `${rect.width}px`;
+
+    ghost.style.maxHeight =
+      "60vh";
+
+    ghost.style.overflow =
+      "hidden";
+
+    ghost.style.left =
+      `${x}px`;
+
+    ghost.style.top =
+      `${y}px`;
+
+    ghost.style.transform =
+      "translate(-50%, -50%) scale(0.98)";
+
+    ghost.style.opacity =
+      "0.88";
+
+    ghost.style.pointerEvents =
+      "none";
+
+    ghost.style.boxShadow =
+      "0 18px 45px rgba(15, 23, 42, 0.35)";
+
+    ghost.style.transition =
+      "none";
+
+    ghost.style.userSelect =
+      "none";
+
+    ghost.style.webkitUserSelect =
+      "none";
+
+    document.body.appendChild(
+      ghost
+    );
+
+    nativeDragGhostRef.current =
+      ghost;
+
+    setNativeDragOverStatus(
+      getNativeDropStatus(
+        x,
+        y
+      )
+    );
+
+    document.addEventListener(
+      "touchmove",
+      handleNativeTouchMove,
+      {
+        passive: false,
+      }
+    );
+
+    document.addEventListener(
+      "touchend",
+      handleNativeTouchEnd,
+      {
+        passive: false,
+      }
+    );
+
+    document.addEventListener(
+      "touchcancel",
+      handleNativeTouchEnd,
+      {
+        passive: false,
+      }
+    );
+
+    startNativeAutoScroll();
   }
 
   function handleNativeTouchMove(
@@ -3236,21 +3447,17 @@ export default function BoardClient({
       y: touch.clientY,
     };
 
+    updateNativeDragGhost(
+      touch.clientX,
+      touch.clientY
+    );
+
     setNativeDragOverStatus(
       getNativeDropStatus(
         touch.clientX,
         touch.clientY
       )
     );
-
-    if (touch.clientY < 120) {
-      window.scrollBy(0, -14);
-    } else if (
-      touch.clientY >
-      window.innerHeight - 150
-    ) {
-      window.scrollBy(0, 14);
-    }
   }
 
   function handleNativeTouchEnd(
@@ -3284,7 +3491,8 @@ export default function BoardClient({
       if (
         status &&
         currentCard &&
-        currentCard.status !== status
+        currentCard.status !==
+          status
       ) {
         void moveCard(
           cardId,
@@ -3293,10 +3501,15 @@ export default function BoardClient({
       }
     }
 
-    suppressCardClickRef.current =
-      true;
-
     cleanupNativeDrag();
+
+    window.setTimeout(
+      () => {
+        suppressCardClickRef.current =
+          false;
+      },
+      250
+    );
   }
 
   function handleNativeCardTouchStart(
@@ -3322,19 +3535,31 @@ export default function BoardClient({
     const startY =
       touch.clientY;
 
-    nativeDragCardIdRef.current =
-      cardId;
+    nativeDragStartRef.current = {
+      x: startX,
+      y: startY,
+    };
 
     nativeDragPointRef.current = {
       x: startX,
       y: startY,
     };
 
+    const cardElement =
+      event.currentTarget;
+
     const cancelBeforeHold = (
       moveEvent: TouchEvent
     ) => {
       if (
-        moveEvent.touches.length !== 1
+        nativeDragActiveRef.current
+      ) {
+        return;
+      }
+
+      if (
+        moveEvent.touches.length !== 1 ||
+        !nativeDragStartRef.current
       ) {
         clearNativeDragTimer();
 
@@ -3351,11 +3576,13 @@ export default function BoardClient({
 
       const distance =
         Math.hypot(
-          moveTouch.clientX - startX,
-          moveTouch.clientY - startY
+          moveTouch.clientX -
+            startX,
+          moveTouch.clientY -
+            startY
         );
 
-      if (distance > 10) {
+      if (distance > 12) {
         clearNativeDragTimer();
 
         document.removeEventListener(
@@ -3365,9 +3592,48 @@ export default function BoardClient({
       }
     };
 
+    const cancelHold = () => {
+      if (
+        !nativeDragActiveRef.current
+      ) {
+        clearNativeDragTimer();
+      }
+
+      document.removeEventListener(
+        "touchmove",
+        cancelBeforeHold
+      );
+
+      document.removeEventListener(
+        "touchend",
+        cancelHold
+      );
+
+      document.removeEventListener(
+        "touchcancel",
+        cancelHold
+      );
+    };
+
     document.addEventListener(
       "touchmove",
       cancelBeforeHold,
+      {
+        passive: true,
+      }
+    );
+
+    document.addEventListener(
+      "touchend",
+      cancelHold,
+      {
+        passive: true,
+      }
+    );
+
+    document.addEventListener(
+      "touchcancel",
+      cancelHold,
       {
         passive: true,
       }
@@ -3380,47 +3646,23 @@ export default function BoardClient({
           cancelBeforeHold
         );
 
-        nativeDragActiveRef.current =
-          true;
-
-        suppressCardClickRef.current =
-          true;
-
-        setNativeDraggingCardId(
-          cardId
-        );
-
-        setNativeDragOverStatus(
-          getNativeDropStatus(
-            startX,
-            startY
-          )
-        );
-
-        document.addEventListener(
-          "touchmove",
-          handleNativeTouchMove,
-          {
-            passive: false,
-          }
-        );
-
-        document.addEventListener(
+        document.removeEventListener(
           "touchend",
-          handleNativeTouchEnd,
-          {
-            passive: false,
-          }
+          cancelHold
         );
 
-        document.addEventListener(
+        document.removeEventListener(
           "touchcancel",
-          handleNativeTouchEnd,
-          {
-            passive: false,
-          }
+          cancelHold
         );
-      }, 350);
+
+        beginNativeCardDrag(
+          cardElement,
+          cardId,
+          startX,
+          startY
+        );
+      }, 320);
   }
 
   // -----------------------------------
@@ -3700,8 +3942,6 @@ export default function BoardClient({
             isNativeAndroid &&
             suppressCardClickRef.current
           ) {
-            suppressCardClickRef.current =
-              false;
             return;
           }
 
@@ -3866,7 +4106,7 @@ export default function BoardClient({
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-slate-400">
             {isNativeAndroid
-              ? "Hold to move · Click to edit"
+              ? "Hold and drag to move · Click to edit"
               : "Drag to move · Click to edit"}
           </span>
 
