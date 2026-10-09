@@ -746,6 +746,29 @@ export default function BoardClient({
     setUnreadChatCount(count || 0);
   }
 
+  async function recordBoardChange(
+    title: string,
+    body: string,
+    type = "change"
+  ) {
+    const { error } = await supabase.rpc(
+      "record_board_change",
+      {
+        target_board_id: boardId,
+        change_title: title,
+        change_body: body,
+        change_type: type,
+      }
+    );
+
+    if (error) {
+      console.error(
+        "Unable to record board notification:",
+        error.message
+      );
+    }
+  }
+
   async function loadPreferences(
     userId: string
   ) {
@@ -2721,6 +2744,12 @@ export default function BoardClient({
           user.id
         );
 
+        await recordBoardChange(
+          "Card updated",
+          `“${trimmedTitle}” was updated on ${board?.name || "this board"}.`,
+          "card_updated"
+        );
+
         await loadCards();
 
         setIsSavingCard(false);
@@ -2802,6 +2831,12 @@ export default function BoardClient({
         user.id
       );
 
+      await recordBoardChange(
+        "New card",
+        `“${trimmedTitle}” was added to ${board?.name || "this board"}.`,
+        "card_created"
+      );
+
       await loadCards();
 
       setIsSavingCard(false);
@@ -2868,6 +2903,12 @@ export default function BoardClient({
 
       return;
     }
+
+    await recordBoardChange(
+      "Card deleted",
+      `“${deleteCardTarget.title}” was deleted from ${board?.name || "this board"}.`,
+      "card_deleted"
+    );
 
     const attachmentPaths =
       (
@@ -2963,6 +3004,16 @@ export default function BoardClient({
 
       return;
     }
+
+    const movedCard = cards.find(
+      (card) => card.id === cardId
+    );
+
+    await recordBoardChange(
+      "Card moved",
+      `“${movedCard?.title || "A card"}” was moved on ${board?.name || "this board"}.`,
+      "card_moved"
+    );
 
     setCards(
       (currentCards) =>
