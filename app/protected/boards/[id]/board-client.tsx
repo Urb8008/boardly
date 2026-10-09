@@ -323,45 +323,6 @@ export default function BoardClient({
     useState<Card[]>([]);
 
   const [
-    touchDraggingCardId,
-    setTouchDraggingCardId,
-  ] = useState<number | null>(null);
-
-  const [
-    touchDragOverStatus,
-    setTouchDragOverStatus,
-  ] = useState<CardStatus | null>(null);
-
-  const touchDragCardIdRef =
-    useRef<number | null>(null);
-
-  const touchDragStartRef =
-    useRef<{
-      x: number;
-      y: number;
-    } | null>(null);
-
-  const touchDragPointRef =
-    useRef<{
-      x: number;
-      y: number;
-    } | null>(null);
-
-  const touchDragReadyRef =
-    useRef(false);
-
-  const touchDragTimerRef =
-    useRef<ReturnType<typeof setTimeout> | null>(
-      null
-    );
-
-  const suppressCardClickRef =
-    useRef(false);
-
-  const touchAutoScrollFrameRef =
-    useRef<number | null>(null);
-
-  const [
     checklistItems,
     setChecklistItems,
   ] = useState<ChecklistItem[]>([]);
@@ -3142,314 +3103,6 @@ export default function BoardClient({
     event.preventDefault();
   }
 
-  function stopTouchAutoScroll() {
-    if (
-      touchAutoScrollFrameRef.current !==
-      null
-    ) {
-      cancelAnimationFrame(
-        touchAutoScrollFrameRef.current
-      );
-
-      touchAutoScrollFrameRef.current =
-        null;
-    }
-  }
-
-  function runTouchAutoScroll() {
-    stopTouchAutoScroll();
-
-    const step = () => {
-      if (
-        !touchDragReadyRef.current ||
-        !touchDragPointRef.current
-      ) {
-        touchAutoScrollFrameRef.current =
-          null;
-        return;
-      }
-
-      const point =
-        touchDragPointRef.current;
-
-      let scrollAmount = 0;
-
-      if (point.y < 130) {
-        scrollAmount = -18;
-      } else if (
-        point.y >
-        window.innerHeight - 170
-      ) {
-        scrollAmount = 18;
-      }
-
-      if (scrollAmount !== 0) {
-        window.scrollBy(
-          0,
-          scrollAmount
-        );
-
-        const status =
-          getTouchDropStatus(
-            point.x,
-            point.y
-          );
-
-        setTouchDragOverStatus(
-          status
-        );
-      }
-
-      touchAutoScrollFrameRef.current =
-        requestAnimationFrame(
-          step
-        );
-    };
-
-    touchAutoScrollFrameRef.current =
-      requestAnimationFrame(
-        step
-      );
-  }
-
-  function clearTouchDragTimer() {
-    if (
-      touchDragTimerRef.current
-    ) {
-      clearTimeout(
-        touchDragTimerRef.current
-      );
-
-      touchDragTimerRef.current =
-        null;
-    }
-  }
-
-  function getTouchDropStatus(
-    x: number,
-    y: number
-  ) {
-    const element =
-      document.elementFromPoint(
-        x,
-        y
-      ) as HTMLElement | null;
-
-    const column =
-      element?.closest<HTMLElement>(
-        "[data-card-status]"
-      );
-
-    const status =
-      column?.dataset
-        .cardStatus as
-        | CardStatus
-        | undefined;
-
-    if (
-      status === "todo" ||
-      status ===
-        "in_progress" ||
-      status === "done"
-    ) {
-      return status;
-    }
-
-    return null;
-  }
-
-  function handleCardTouchStart(
-    event:
-      React.TouchEvent<HTMLDivElement>,
-    cardId: number
-  ) {
-    if (
-      event.touches.length !== 1
-    ) {
-      return;
-    }
-
-    clearTouchDragTimer();
-
-    const touch =
-      event.touches[0];
-
-    touchDragCardIdRef.current =
-      cardId;
-
-    touchDragStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-    };
-
-    touchDragPointRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-    };
-
-    touchDragReadyRef.current =
-      false;
-
-    touchDragTimerRef.current =
-      setTimeout(() => {
-        touchDragReadyRef.current =
-          true;
-
-        suppressCardClickRef.current =
-          true;
-
-        setTouchDraggingCardId(
-          cardId
-        );
-
-        const status =
-          getTouchDropStatus(
-            touch.clientX,
-            touch.clientY
-          );
-
-        setTouchDragOverStatus(
-          status
-        );
-
-        runTouchAutoScroll();
-      }, 220);
-  }
-
-  function handleCardTouchMove(
-    event:
-      React.TouchEvent<HTMLDivElement>
-  ) {
-    if (
-      event.touches.length !== 1 ||
-      !touchDragStartRef.current
-    ) {
-      return;
-    }
-
-    const touch =
-      event.touches[0];
-
-    touchDragPointRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-    };
-
-    if (
-      !touchDragReadyRef.current
-    ) {
-      const deltaX =
-        touch.clientX -
-        touchDragStartRef.current.x;
-
-      const deltaY =
-        touch.clientY -
-        touchDragStartRef.current.y;
-
-      if (
-        Math.hypot(
-          deltaX,
-          deltaY
-        ) > 10
-      ) {
-        clearTouchDragTimer();
-        touchDragCardIdRef.current =
-          null;
-        touchDragStartRef.current =
-          null;
-      }
-
-      return;
-    }
-
-    event.preventDefault();
-
-    const status =
-      getTouchDropStatus(
-        touch.clientX,
-        touch.clientY
-      );
-
-    setTouchDragOverStatus(
-      status
-    );
-
-  }
-
-  function finishCardTouchDrag(
-    event:
-      React.TouchEvent<HTMLDivElement>
-  ) {
-    clearTouchDragTimer();
-    stopTouchAutoScroll();
-
-    const cardId =
-      touchDragCardIdRef.current;
-
-    const point =
-      touchDragPointRef.current;
-
-    const wasDragging =
-      touchDragReadyRef.current;
-
-    if (wasDragging) {
-      event.preventDefault();
-
-      suppressCardClickRef.current =
-        true;
-
-      if (
-        cardId &&
-        point
-      ) {
-        const status =
-          getTouchDropStatus(
-            point.x,
-            point.y
-          );
-
-        const currentCard =
-          cards.find(
-            (card) =>
-              card.id ===
-              cardId
-          );
-
-        if (
-          status &&
-          currentCard &&
-          currentCard.status !==
-            status
-        ) {
-          void moveCard(
-            cardId,
-            status
-          );
-        }
-      }
-    }
-
-    touchDragCardIdRef.current =
-      null;
-
-    touchDragStartRef.current =
-      null;
-
-    touchDragPointRef.current =
-      null;
-
-    touchDragReadyRef.current =
-      false;
-
-    setTouchDraggingCardId(
-      null
-    );
-
-    setTouchDragOverStatus(
-      null
-    );
-  }
-
   // -----------------------------------
   // DISPLAY HELPERS
   // -----------------------------------
@@ -3721,14 +3374,6 @@ export default function BoardClient({
         role="button"
         tabIndex={0}
         onClick={(event) => {
-          if (
-            suppressCardClickRef.current
-          ) {
-            suppressCardClickRef.current =
-              false;
-            return;
-          }
-
           const target =
             event.target as HTMLElement;
 
@@ -3772,42 +3417,12 @@ export default function BoardClient({
             card.id
           )
         }
-        onTouchStart={(event) =>
-          handleCardTouchStart(
-            event,
-            card.id
-          )
-        }
-        onTouchMove={
-          handleCardTouchMove
-        }
-        onTouchEnd={
-          finishCardTouchDrag
-        }
-        onTouchCancel={
-          finishCardTouchDrag
-        }
-        onContextMenu={(event) => {
-          event.preventDefault();
-        }}
         className="group cursor-pointer rounded-xl border p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:brightness-110 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
         style={{
-          WebkitUserSelect: "none",
-          userSelect: "none",
           background:
             priorityCardStyle.background,
           borderColor:
             priorityCardStyle.borderColor,
-          opacity:
-            touchDraggingCardId ===
-            card.id
-              ? 0.68
-              : 1,
-          transform:
-            touchDraggingCardId ===
-            card.id
-              ? "scale(1.02)"
-              : undefined,
         }}
       >
         <div className="flex items-start justify-between gap-3">
@@ -3897,7 +3512,7 @@ export default function BoardClient({
 
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-slate-400">
-            Hold card to move · Click to edit
+            Drag to move · Click to edit
           </span>
 
           <button
@@ -3949,9 +3564,6 @@ export default function BoardClient({
   }) {
     return (
       <div
-        data-card-status={
-          status
-        }
         onDragOver={allowDrop}
         onDrop={(event) =>
           handleDrop(
@@ -3963,16 +3575,6 @@ export default function BoardClient({
         style={{
           backgroundColor:
             panelBackgroundColor,
-          outline:
-            touchDragOverStatus ===
-            status
-              ? `3px solid ${accentColor}`
-              : undefined,
-          outlineOffset:
-            touchDragOverStatus ===
-            status
-              ? "2px"
-              : undefined,
         }}
       >
         <div
@@ -4010,26 +3612,6 @@ export default function BoardClient({
             +
           </button>
         </div>
-
-        {touchDraggingCardId !== null && (
-          <div
-            className="mt-3 rounded-xl border border-dashed px-3 py-2 text-center text-xs font-semibold"
-            style={{
-              borderColor:
-                touchDragOverStatus ===
-                status
-                  ? accentColor
-                  : "rgba(255, 255, 255, 0.7)",
-              backgroundColor:
-                touchDragOverStatus ===
-                status
-                  ? "rgba(255, 255, 255, 0.72)"
-                  : "rgba(255, 255, 255, 0.35)",
-            }}
-          >
-            Release here to move
-          </div>
-        )}
 
         <div className="mt-4 flex flex-col gap-3">
           {cardsForColumn.map(
