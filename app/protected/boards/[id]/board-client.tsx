@@ -766,6 +766,39 @@ export default function BoardClient({
         "Unable to record board notification:",
         error.message
       );
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "/api/push/board-change",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            boardId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const result =
+          await response.json();
+
+        console.error(
+          "Unable to send push notification:",
+          result.error ||
+            response.statusText
+        );
+      }
+    } catch (pushError) {
+      console.error(
+        "Unable to send push notification:",
+        pushError
+      );
     }
   }
 
