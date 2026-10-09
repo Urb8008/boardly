@@ -17,6 +17,7 @@ export default function PushRegistration() {
 
     const supabase = createClient();
     let mounted = true;
+    let clearing = false;
 
     const saveToken = async (token: Token) => {
       const {
@@ -48,6 +49,57 @@ export default function PushRegistration() {
           error.message
         );
       }
+    };
+
+    const resetNotificationCount = async () => {
+      if (clearing) {
+        return;
+      }
+
+      clearing = true;
+
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (!userError && user) {
+          const { error } = await supabase
+            .from("notifications")
+            .update({
+              is_read: true,
+            })
+            .eq("user_id", user.id)
+            .eq("is_read", false);
+
+          if (error) {
+            console.error(
+              "Unable to reset notification count:",
+              error.message
+            );
+          }
+        }
+
+        await PushNotifications.removeAllDeliveredNotifications();
+      } catch (error) {
+        console.error(
+          "Unable to clear delivered notifications:",
+          error
+        );
+      } finally {
+        clearing = false;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        void resetNotificationCount();
+      }
+    };
+
+    const handlePageHide = () => {
+      void resetNotificationCount();
     };
 
     const registerForPush = async () => {
@@ -86,6 +138,16 @@ export default function PushRegistration() {
         }
       );
 
+      document.addEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+
+      window.addEventListener(
+        "pagehide",
+        handlePageHide
+      );
+
       await registerForPush();
     };
 
@@ -93,6 +155,17 @@ export default function PushRegistration() {
 
     return () => {
       mounted = false;
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+
+      window.removeEventListener(
+        "pagehide",
+        handlePageHide
+      );
+
       void PushNotifications.removeAllListeners();
     };
   }, []);

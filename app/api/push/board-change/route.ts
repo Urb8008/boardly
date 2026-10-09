@@ -168,6 +168,8 @@ export async function POST(
               notification: {
                 notificationCount:
                   badgeCount,
+                tag:
+                  "touchbase_changes",
                 priority:
                   "high" as const,
                 defaultSound:
