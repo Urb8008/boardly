@@ -323,6 +323,40 @@ export default function BoardClient({
     useState<Card[]>([]);
 
   const [
+    isFinePointer,
+    setIsFinePointer,
+  ] = useState(false);
+
+  const [
+    mobileDraggingCardId,
+    setMobileDraggingCardId,
+  ] = useState<number | null>(null);
+
+  const [
+    mobileDragOverStatus,
+    setMobileDragOverStatus,
+  ] = useState<CardStatus | null>(null);
+
+  const mobileDragCardIdRef =
+    useRef<number | null>(null);
+
+  const mobileDragPointRef =
+    useRef<{ x: number; y: number } | null>(
+      null
+    );
+
+  const mobileDragTimerRef =
+    useRef<ReturnType<typeof setTimeout> | null>(
+      null
+    );
+
+  const mobileDragActiveRef =
+    useRef(false);
+
+  const suppressCardClickRef =
+    useRef(false);
+
+  const [
     checklistItems,
     setChecklistItems,
   ] = useState<ChecklistItem[]>([]);
@@ -612,6 +646,34 @@ export default function BoardClient({
 
   useEffect(() => {
     initializeBoard();
+  }, []);
+
+  useEffect(() => {
+    const media =
+      window.matchMedia(
+        "(pointer: fine)"
+      );
+
+    const updatePointerMode =
+      () => {
+        setIsFinePointer(
+          media.matches
+        );
+      };
+
+    updatePointerMode();
+
+    media.addEventListener(
+      "change",
+      updatePointerMode
+    );
+
+    return () => {
+      media.removeEventListener(
+        "change",
+        updatePointerMode
+      );
+    };
   }, []);
 
 
@@ -3103,6 +3165,313 @@ export default function BoardClient({
     event.preventDefault();
   }
 
+  function getMobileDropStatus(
+    x: number,
+    y: number
+  ) {
+    const element =
+      document.elementFromPoint(
+        x,
+        y
+      ) as HTMLElement | null;
+
+    const column =
+      element?.closest<HTMLElement>(
+        "[data-card-status]"
+      );
+
+    const status =
+      column?.dataset
+        .cardStatus as
+        | CardStatus
+        | undefined;
+
+    if (
+      status === "todo" ||
+      status ===
+        "in_progress" ||
+      status === "done"
+    ) {
+      return status;
+    }
+
+    return null;
+  }
+
+  function clearMobileDragTimer() {
+    if (
+      mobileDragTimerRef.current
+    ) {
+      clearTimeout(
+        mobileDragTimerRef.current
+      );
+
+      mobileDragTimerRef.current =
+        null;
+    }
+  }
+
+  function stopMobileDrag() {
+    clearMobileDragTimer();
+
+    document.removeEventListener(
+      "touchmove",
+      handleDocumentTouchMove
+    );
+
+    document.removeEventListener(
+      "touchend",
+      handleDocumentTouchEnd
+    );
+
+    document.removeEventListener(
+      "touchcancel",
+      handleDocumentTouchEnd
+    );
+
+    mobileDragCardIdRef.current =
+      null;
+
+    mobileDragPointRef.current =
+      null;
+
+    mobileDragActiveRef.current =
+      false;
+
+    setMobileDraggingCardId(
+      null
+    );
+
+    setMobileDragOverStatus(
+      null
+    );
+  }
+
+  function handleDocumentTouchMove(
+    event: TouchEvent
+  ) {
+    if (
+      !mobileDragActiveRef.current ||
+      event.touches.length !== 1
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const touch =
+      event.touches[0];
+
+    mobileDragPointRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+
+    const status =
+      getMobileDropStatus(
+        touch.clientX,
+        touch.clientY
+      );
+
+    setMobileDragOverStatus(
+      status
+    );
+
+    if (
+      touch.clientY <
+      120
+    ) {
+      window.scrollBy(
+        0,
+        -16
+      );
+    } else if (
+      touch.clientY >
+      window.innerHeight - 150
+    ) {
+      window.scrollBy(
+        0,
+        16
+      );
+    }
+  }
+
+  function handleDocumentTouchEnd(
+    event: TouchEvent
+  ) {
+    if (
+      !mobileDragActiveRef.current
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const cardId =
+      mobileDragCardIdRef.current;
+
+    const point =
+      mobileDragPointRef.current;
+
+    if (
+      cardId &&
+      point
+    ) {
+      const status =
+        getMobileDropStatus(
+          point.x,
+          point.y
+        );
+
+      const currentCard =
+        cards.find(
+          (card) =>
+            card.id === cardId
+        );
+
+      if (
+        status &&
+        currentCard &&
+        currentCard.status !==
+          status
+      ) {
+        void moveCard(
+          cardId,
+          status
+        );
+      }
+    }
+
+    suppressCardClickRef.current =
+      true;
+
+    stopMobileDrag();
+  }
+
+  function handleCardTouchStart(
+    event:
+      React.TouchEvent<HTMLDivElement>,
+    cardId: number
+  ) {
+    if (
+      event.touches.length !== 1
+    ) {
+      return;
+    }
+
+    clearMobileDragTimer();
+
+    const touch =
+      event.touches[0];
+
+    const startX =
+      touch.clientX;
+
+    const startY =
+      touch.clientY;
+
+    mobileDragCardIdRef.current =
+      cardId;
+
+    mobileDragPointRef.current = {
+      x: startX,
+      y: startY,
+    };
+
+    const cancelBeforeHold = (
+      moveEvent: TouchEvent
+    ) => {
+      if (
+        moveEvent.touches.length !==
+        1
+      ) {
+        clearMobileDragTimer();
+        document.removeEventListener(
+          "touchmove",
+          cancelBeforeHold
+        );
+        return;
+      }
+
+      const moveTouch =
+        moveEvent.touches[0];
+
+      const distance =
+        Math.hypot(
+          moveTouch.clientX -
+            startX,
+          moveTouch.clientY -
+            startY
+        );
+
+      if (distance > 10) {
+        clearMobileDragTimer();
+
+        document.removeEventListener(
+          "touchmove",
+          cancelBeforeHold
+        );
+      }
+    };
+
+    document.addEventListener(
+      "touchmove",
+      cancelBeforeHold,
+      {
+        passive: true,
+      }
+    );
+
+    mobileDragTimerRef.current =
+      setTimeout(() => {
+        document.removeEventListener(
+          "touchmove",
+          cancelBeforeHold
+        );
+
+        mobileDragActiveRef.current =
+          true;
+
+        suppressCardClickRef.current =
+          true;
+
+        setMobileDraggingCardId(
+          cardId
+        );
+
+        setMobileDragOverStatus(
+          getMobileDropStatus(
+            startX,
+            startY
+          )
+        );
+
+        document.addEventListener(
+          "touchmove",
+          handleDocumentTouchMove,
+          {
+            passive: false,
+          }
+        );
+
+        document.addEventListener(
+          "touchend",
+          handleDocumentTouchEnd,
+          {
+            passive: false,
+          }
+        );
+
+        document.addEventListener(
+          "touchcancel",
+          handleDocumentTouchEnd,
+          {
+            passive: false,
+          }
+        );
+      }, 450);
+  }
+
   // -----------------------------------
   // DISPLAY HELPERS
   // -----------------------------------
@@ -3370,10 +3739,20 @@ export default function BoardClient({
     return (
       <div
         key={card.id}
-        draggable
+        draggable={
+          isFinePointer
+        }
         role="button"
         tabIndex={0}
         onClick={(event) => {
+          if (
+            suppressCardClickRef.current
+          ) {
+            suppressCardClickRef.current =
+              false;
+            return;
+          }
+
           const target =
             event.target as HTMLElement;
 
@@ -3417,12 +3796,23 @@ export default function BoardClient({
             card.id
           )
         }
+        onTouchStart={(event) =>
+          handleCardTouchStart(
+            event,
+            card.id
+          )
+        }
         className="group cursor-pointer rounded-xl border p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:brightness-110 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
         style={{
           background:
             priorityCardStyle.background,
           borderColor:
             priorityCardStyle.borderColor,
+          opacity:
+            mobileDraggingCardId ===
+            card.id
+              ? 0.68
+              : 1,
         }}
       >
         <div className="flex items-start justify-between gap-3">
@@ -3512,7 +3902,7 @@ export default function BoardClient({
 
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-slate-400">
-            Drag to move · Click to edit
+            Hold to move · Click to edit
           </span>
 
           <button
@@ -3564,6 +3954,9 @@ export default function BoardClient({
   }) {
     return (
       <div
+        data-card-status={
+          status
+        }
         onDragOver={allowDrop}
         onDrop={(event) =>
           handleDrop(
@@ -3575,6 +3968,16 @@ export default function BoardClient({
         style={{
           backgroundColor:
             panelBackgroundColor,
+          outline:
+            mobileDragOverStatus ===
+            status
+              ? `3px solid ${accentColor}`
+              : undefined,
+          outlineOffset:
+            mobileDragOverStatus ===
+            status
+              ? "2px"
+              : undefined,
         }}
       >
         <div
