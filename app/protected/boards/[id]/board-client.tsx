@@ -358,6 +358,9 @@ export default function BoardClient({
   const suppressCardClickRef =
     useRef(false);
 
+  const touchAutoScrollFrameRef =
+    useRef<number | null>(null);
+
   const [
     checklistItems,
     setChecklistItems,
@@ -3139,6 +3142,76 @@ export default function BoardClient({
     event.preventDefault();
   }
 
+  function stopTouchAutoScroll() {
+    if (
+      touchAutoScrollFrameRef.current !==
+      null
+    ) {
+      cancelAnimationFrame(
+        touchAutoScrollFrameRef.current
+      );
+
+      touchAutoScrollFrameRef.current =
+        null;
+    }
+  }
+
+  function runTouchAutoScroll() {
+    stopTouchAutoScroll();
+
+    const step = () => {
+      if (
+        !touchDragReadyRef.current ||
+        !touchDragPointRef.current
+      ) {
+        touchAutoScrollFrameRef.current =
+          null;
+        return;
+      }
+
+      const point =
+        touchDragPointRef.current;
+
+      let scrollAmount = 0;
+
+      if (point.y < 130) {
+        scrollAmount = -18;
+      } else if (
+        point.y >
+        window.innerHeight - 170
+      ) {
+        scrollAmount = 18;
+      }
+
+      if (scrollAmount !== 0) {
+        window.scrollBy(
+          0,
+          scrollAmount
+        );
+
+        const status =
+          getTouchDropStatus(
+            point.x,
+            point.y
+          );
+
+        setTouchDragOverStatus(
+          status
+        );
+      }
+
+      touchAutoScrollFrameRef.current =
+        requestAnimationFrame(
+          step
+        );
+    };
+
+    touchAutoScrollFrameRef.current =
+      requestAnimationFrame(
+        step
+      );
+  }
+
   function clearTouchDragTimer() {
     if (
       touchDragTimerRef.current
@@ -3238,7 +3311,9 @@ export default function BoardClient({
         setTouchDragOverStatus(
           status
         );
-      }, 280);
+
+        runTouchAutoScroll();
+      }, 220);
   }
 
   function handleCardTouchMove(
@@ -3299,22 +3374,6 @@ export default function BoardClient({
       status
     );
 
-    if (
-      touch.clientY < 110
-    ) {
-      window.scrollBy({
-        top: -14,
-        behavior: "auto",
-      });
-    } else if (
-      touch.clientY >
-      window.innerHeight - 150
-    ) {
-      window.scrollBy({
-        top: 14,
-        behavior: "auto",
-      });
-    }
   }
 
   function finishCardTouchDrag(
@@ -3322,6 +3381,7 @@ export default function BoardClient({
       React.TouchEvent<HTMLDivElement>
   ) {
     clearTouchDragTimer();
+    stopTouchAutoScroll();
 
     const cardId =
       touchDragCardIdRef.current;
@@ -3727,8 +3787,14 @@ export default function BoardClient({
         onTouchCancel={
           finishCardTouchDrag
         }
+        onContextMenu={(event) => {
+          event.preventDefault();
+        }}
         className="group cursor-pointer rounded-xl border p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:brightness-110 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
         style={{
+          touchAction: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
           background:
             priorityCardStyle.background,
           borderColor:
@@ -3945,6 +4011,26 @@ export default function BoardClient({
             +
           </button>
         </div>
+
+        {touchDraggingCardId !== null && (
+          <div
+            className="mt-3 rounded-xl border border-dashed px-3 py-2 text-center text-xs font-semibold"
+            style={{
+              borderColor:
+                touchDragOverStatus ===
+                status
+                  ? accentColor
+                  : "rgba(255, 255, 255, 0.7)",
+              backgroundColor:
+                touchDragOverStatus ===
+                status
+                  ? "rgba(255, 255, 255, 0.72)"
+                  : "rgba(255, 255, 255, 0.35)",
+            }}
+          >
+            Release here to move
+          </div>
+        )}
 
         <div className="mt-4 flex flex-col gap-3">
           {cardsForColumn.map(
