@@ -3260,7 +3260,7 @@ export default function BoardClient({
 
   function handleCardTouchStart(
     event:
-      React.TouchEvent<HTMLDivElement>,
+      React.TouchEvent<HTMLElement>,
     cardId: number
   ) {
     if (
@@ -3318,7 +3318,7 @@ export default function BoardClient({
 
   function handleCardTouchMove(
     event:
-      React.TouchEvent<HTMLDivElement>
+      React.TouchEvent<HTMLElement>
   ) {
     if (
       event.touches.length !== 1 ||
@@ -3378,7 +3378,7 @@ export default function BoardClient({
 
   function finishCardTouchDrag(
     event:
-      React.TouchEvent<HTMLDivElement>
+      React.TouchEvent<HTMLElement>
   ) {
     clearTouchDragTimer();
     stopTouchAutoScroll();
@@ -3772,29 +3772,8 @@ export default function BoardClient({
             card.id
           )
         }
-        onTouchStart={(event) =>
-          handleCardTouchStart(
-            event,
-            card.id
-          )
-        }
-        onTouchMove={
-          handleCardTouchMove
-        }
-        onTouchEnd={
-          finishCardTouchDrag
-        }
-        onTouchCancel={
-          finishCardTouchDrag
-        }
-        onContextMenu={(event) => {
-          event.preventDefault();
-        }}
         className="group cursor-pointer rounded-xl border p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:brightness-110 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
         style={{
-          touchAction: "none",
-          WebkitUserSelect: "none",
-          userSelect: "none",
           background:
             priorityCardStyle.background,
           borderColor:
@@ -3896,10 +3875,59 @@ export default function BoardClient({
           </div>
         )}
 
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-slate-400">
-            Hold and drag to move · Click to edit
-          </span>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+              onTouchStart={(event) => {
+                event.stopPropagation();
+                handleCardTouchStart(
+                  event,
+                  card.id
+                );
+              }}
+              onTouchMove={(event) => {
+                event.stopPropagation();
+                handleCardTouchMove(
+                  event
+                );
+              }}
+              onTouchEnd={(event) => {
+                event.stopPropagation();
+                finishCardTouchDrag(
+                  event
+                );
+              }}
+              onTouchCancel={(event) => {
+                event.stopPropagation();
+                finishCardTouchDrag(
+                  event
+                );
+              }}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              className="rounded-lg border border-white/60 bg-white/45 px-2.5 py-1.5 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur-md md:hidden"
+              style={{
+                touchAction: "none",
+                WebkitUserSelect:
+                  "none",
+                userSelect: "none",
+              }}
+              aria-label="Drag card"
+              title="Hold and drag"
+            >
+              ↕ Drag
+            </button>
+
+            <span className="text-xs text-slate-400">
+              Click to edit
+            </span>
+          </div>
 
           <button
             type="button"
