@@ -4201,7 +4201,13 @@ export default function BoardClient({
 
 
       {/* MOBILE NAVIGATION */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/50 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur-xl md:hidden"
+        style={{
+          backgroundColor:
+            panelBackgroundColor,
+        }}
+      >
         <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
           <button type="button" onClick={() => setMobileMoreOpen(false)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-white" style={{ backgroundColor: accentColor }}>
             <span className="text-lg">▦</span><span>Board</span>
