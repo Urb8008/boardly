@@ -1354,7 +1354,7 @@ export default function BoardsPage() {
                   return (
                     <div
                       key={board.id}
-                      className="group relative z-0 overflow-visible rounded-2xl border border-white/45 shadow-md backdrop-blur-md transition hover:z-[200] hover:-translate-y-1 hover:shadow-xl focus-within:z-[200]"
+                      className="group relative overflow-visible rounded-2xl border border-white/45 shadow-md backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl"
                       style={{
                         backgroundColor:
                           getBoardCardBackground(
@@ -1496,7 +1496,7 @@ export default function BoardsPage() {
                             </button>
 
                             <div
-                              className="invisible absolute bottom-full right-0 z-[220] mb-2 w-56 max-w-[calc(100vw-2rem)] translate-y-1 rounded-2xl border border-white/70 bg-white/95 p-3 text-left opacity-0 shadow-2xl backdrop-blur-xl transition-all duration-150 group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100"
+                              className="invisible absolute bottom-full right-0 z-[100] mb-2 min-w-max translate-y-1 rounded-2xl border border-white/70 bg-white/90 p-2 text-left opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100"
                               onClick={(event) =>
                                 event.stopPropagation()
                               }
@@ -1510,7 +1510,7 @@ export default function BoardsPage() {
                                         board
                                       )
                                     }
-                                    className="inline-flex w-full items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
+                                    className="inline-flex w-auto items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
                                     style={{
                                       backgroundColor:
                                         accentColor,
@@ -1527,7 +1527,7 @@ export default function BoardsPage() {
                                       board
                                     )
                                   }
-                                  className="inline-flex w-full items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
+                                  className="inline-flex w-auto items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
                                   style={{
                                     backgroundColor:
                                       accentColor,
@@ -1540,7 +1540,7 @@ export default function BoardsPage() {
                                   <div className="group/preferences relative">
                                     <button
                                       type="button"
-                                      className="inline-flex w-full items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
+                                      className="inline-flex w-auto items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
                                       style={{
                                         backgroundColor:
                                           accentColor,
@@ -1695,12 +1695,76 @@ export default function BoardsPage() {
                                         board
                                       )
                                     }
-                                    className="inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-b from-red-400 via-red-500 to-red-700 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-md"
+                                    className="inline-flex w-auto items-center rounded-lg bg-gradient-to-b from-red-400 via-red-500 to-red-700 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-md"
                                   >
                                     Delete
                                   </button>
                                 )}
                               </div>
+
+                              {links.length > 0 && (
+                                <>
+                                  <div className="my-2 border-t border-slate-200/80" />
+
+                                  <p className="px-1 pb-2 pt-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                                    Links
+                                  </p>
+
+                                  <div className="flex flex-wrap gap-2">
+                                    {links.map(
+                                      (link) => (
+                                        <div
+                                          key={
+                                            link.id
+                                          }
+                                          className="group/link relative"
+                                        >
+                                          <a
+                                            href={
+                                              link.url
+                                            }
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                                            title={getLinkLabel(
+                                              link
+                                            )}
+                                          >
+                                            <img
+                                              src={getLinkIconUrl(
+                                                link.url
+                                              )}
+                                              alt=""
+                                              className="h-5 w-5 rounded-sm"
+                                            />
+                                            <span className="sr-only">
+                                              {getLinkLabel(
+                                                link
+                                              )}
+                                            </span>
+                                          </a>
+
+                                          {link.user_id ===
+                                            currentUserId && (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                deleteBoardLink(
+                                                  link
+                                                )
+                                              }
+                                              className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold text-white shadow group-hover/link:flex"
+                                              title="Delete link"
+                                            >
+                                              ×
+                                            </button>
+                                          )}
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                </>
+                              )}
                             </div>
                               </div>
                             </div>
@@ -1719,8 +1783,13 @@ export default function BoardsPage() {
 
       {/* MOBILE NAVIGATION */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/95 px-3 pt-2 shadow-[0_-10px_30px_rgba(15,23,42,0.14)] backdrop-blur-xl md:hidden"
-        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/50 px-3 pt-2 shadow-[0_-10px_30px_rgba(15,23,42,0.14)] backdrop-blur-xl md:hidden"
+        style={{
+          paddingBottom:
+            "max(0.75rem, env(safe-area-inset-bottom))",
+          backgroundColor:
+            panelBackgroundColor,
+        }}
         aria-label="Mobile navigation"
       >
         <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
