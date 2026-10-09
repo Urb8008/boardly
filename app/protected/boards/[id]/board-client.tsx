@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Capacitor } from "@capacitor/core";
 import { WALLPAPER_OPTIONS } from "@/lib/preferences/options";
 
 type Board = {
@@ -322,35 +323,34 @@ export default function BoardClient({
   const [cards, setCards] =
     useState<Card[]>([]);
 
-  const [
-    isFinePointer,
-    setIsFinePointer,
-  ] = useState(false);
+  const isNativeAndroid =
+    Capacitor.isNativePlatform() &&
+    Capacitor.getPlatform() === "android";
 
   const [
-    mobileDraggingCardId,
-    setMobileDraggingCardId,
+    nativeDraggingCardId,
+    setNativeDraggingCardId,
   ] = useState<number | null>(null);
 
   const [
-    mobileDragOverStatus,
-    setMobileDragOverStatus,
+    nativeDragOverStatus,
+    setNativeDragOverStatus,
   ] = useState<CardStatus | null>(null);
 
-  const mobileDragCardIdRef =
+  const nativeDragCardIdRef =
     useRef<number | null>(null);
 
-  const mobileDragPointRef =
+  const nativeDragPointRef =
     useRef<{ x: number; y: number } | null>(
       null
     );
 
-  const mobileDragTimerRef =
+  const nativeDragTimerRef =
     useRef<ReturnType<typeof setTimeout> | null>(
       null
     );
 
-  const mobileDragActiveRef =
+  const nativeDragActiveRef =
     useRef(false);
 
   const suppressCardClickRef =
@@ -646,34 +646,6 @@ export default function BoardClient({
 
   useEffect(() => {
     initializeBoard();
-  }, []);
-
-  useEffect(() => {
-    const media =
-      window.matchMedia(
-        "(pointer: fine)"
-      );
-
-    const updatePointerMode =
-      () => {
-        setIsFinePointer(
-          media.matches
-        );
-      };
-
-    updatePointerMode();
-
-    media.addEventListener(
-      "change",
-      updatePointerMode
-    );
-
-    return () => {
-      media.removeEventListener(
-        "change",
-        updatePointerMode
-      );
-    };
   }, []);
 
 
@@ -3165,7 +3137,7 @@ export default function BoardClient({
     event.preventDefault();
   }
 
-  function getMobileDropStatus(
+  function getNativeDropStatus(
     x: number,
     y: number
   ) {
@@ -3188,8 +3160,7 @@ export default function BoardClient({
 
     if (
       status === "todo" ||
-      status ===
-        "in_progress" ||
+      status === "in_progress" ||
       status === "done"
     ) {
       return status;
@@ -3198,60 +3169,58 @@ export default function BoardClient({
     return null;
   }
 
-  function clearMobileDragTimer() {
-    if (
-      mobileDragTimerRef.current
-    ) {
+  function clearNativeDragTimer() {
+    if (nativeDragTimerRef.current) {
       clearTimeout(
-        mobileDragTimerRef.current
+        nativeDragTimerRef.current
       );
 
-      mobileDragTimerRef.current =
+      nativeDragTimerRef.current =
         null;
     }
   }
 
-  function stopMobileDrag() {
-    clearMobileDragTimer();
+  function cleanupNativeDrag() {
+    clearNativeDragTimer();
 
     document.removeEventListener(
       "touchmove",
-      handleDocumentTouchMove
+      handleNativeTouchMove
     );
 
     document.removeEventListener(
       "touchend",
-      handleDocumentTouchEnd
+      handleNativeTouchEnd
     );
 
     document.removeEventListener(
       "touchcancel",
-      handleDocumentTouchEnd
+      handleNativeTouchEnd
     );
 
-    mobileDragCardIdRef.current =
+    nativeDragCardIdRef.current =
       null;
 
-    mobileDragPointRef.current =
+    nativeDragPointRef.current =
       null;
 
-    mobileDragActiveRef.current =
+    nativeDragActiveRef.current =
       false;
 
-    setMobileDraggingCardId(
+    setNativeDraggingCardId(
       null
     );
 
-    setMobileDragOverStatus(
+    setNativeDragOverStatus(
       null
     );
   }
 
-  function handleDocumentTouchMove(
+  function handleNativeTouchMove(
     event: TouchEvent
   ) {
     if (
-      !mobileDragActiveRef.current ||
+      !nativeDragActiveRef.current ||
       event.touches.length !== 1
     ) {
       return;
@@ -3262,63 +3231,46 @@ export default function BoardClient({
     const touch =
       event.touches[0];
 
-    mobileDragPointRef.current = {
+    nativeDragPointRef.current = {
       x: touch.clientX,
       y: touch.clientY,
     };
 
-    const status =
-      getMobileDropStatus(
+    setNativeDragOverStatus(
+      getNativeDropStatus(
         touch.clientX,
         touch.clientY
-      );
-
-    setMobileDragOverStatus(
-      status
+      )
     );
 
-    if (
-      touch.clientY <
-      120
-    ) {
-      window.scrollBy(
-        0,
-        -16
-      );
+    if (touch.clientY < 120) {
+      window.scrollBy(0, -14);
     } else if (
       touch.clientY >
       window.innerHeight - 150
     ) {
-      window.scrollBy(
-        0,
-        16
-      );
+      window.scrollBy(0, 14);
     }
   }
 
-  function handleDocumentTouchEnd(
+  function handleNativeTouchEnd(
     event: TouchEvent
   ) {
-    if (
-      !mobileDragActiveRef.current
-    ) {
+    if (!nativeDragActiveRef.current) {
       return;
     }
 
     event.preventDefault();
 
     const cardId =
-      mobileDragCardIdRef.current;
+      nativeDragCardIdRef.current;
 
     const point =
-      mobileDragPointRef.current;
+      nativeDragPointRef.current;
 
-    if (
-      cardId &&
-      point
-    ) {
+    if (cardId && point) {
       const status =
-        getMobileDropStatus(
+        getNativeDropStatus(
           point.x,
           point.y
         );
@@ -3332,8 +3284,7 @@ export default function BoardClient({
       if (
         status &&
         currentCard &&
-        currentCard.status !==
-          status
+        currentCard.status !== status
       ) {
         void moveCard(
           cardId,
@@ -3345,21 +3296,22 @@ export default function BoardClient({
     suppressCardClickRef.current =
       true;
 
-    stopMobileDrag();
+    cleanupNativeDrag();
   }
 
-  function handleCardTouchStart(
+  function handleNativeCardTouchStart(
     event:
       React.TouchEvent<HTMLDivElement>,
     cardId: number
   ) {
     if (
+      !isNativeAndroid ||
       event.touches.length !== 1
     ) {
       return;
     }
 
-    clearMobileDragTimer();
+    clearNativeDragTimer();
 
     const touch =
       event.touches[0];
@@ -3370,10 +3322,10 @@ export default function BoardClient({
     const startY =
       touch.clientY;
 
-    mobileDragCardIdRef.current =
+    nativeDragCardIdRef.current =
       cardId;
 
-    mobileDragPointRef.current = {
+    nativeDragPointRef.current = {
       x: startX,
       y: startY,
     };
@@ -3382,14 +3334,15 @@ export default function BoardClient({
       moveEvent: TouchEvent
     ) => {
       if (
-        moveEvent.touches.length !==
-        1
+        moveEvent.touches.length !== 1
       ) {
-        clearMobileDragTimer();
+        clearNativeDragTimer();
+
         document.removeEventListener(
           "touchmove",
           cancelBeforeHold
         );
+
         return;
       }
 
@@ -3398,14 +3351,12 @@ export default function BoardClient({
 
       const distance =
         Math.hypot(
-          moveTouch.clientX -
-            startX,
-          moveTouch.clientY -
-            startY
+          moveTouch.clientX - startX,
+          moveTouch.clientY - startY
         );
 
       if (distance > 10) {
-        clearMobileDragTimer();
+        clearNativeDragTimer();
 
         document.removeEventListener(
           "touchmove",
@@ -3422,25 +3373,25 @@ export default function BoardClient({
       }
     );
 
-    mobileDragTimerRef.current =
+    nativeDragTimerRef.current =
       setTimeout(() => {
         document.removeEventListener(
           "touchmove",
           cancelBeforeHold
         );
 
-        mobileDragActiveRef.current =
+        nativeDragActiveRef.current =
           true;
 
         suppressCardClickRef.current =
           true;
 
-        setMobileDraggingCardId(
+        setNativeDraggingCardId(
           cardId
         );
 
-        setMobileDragOverStatus(
-          getMobileDropStatus(
+        setNativeDragOverStatus(
+          getNativeDropStatus(
             startX,
             startY
           )
@@ -3448,7 +3399,7 @@ export default function BoardClient({
 
         document.addEventListener(
           "touchmove",
-          handleDocumentTouchMove,
+          handleNativeTouchMove,
           {
             passive: false,
           }
@@ -3456,7 +3407,7 @@ export default function BoardClient({
 
         document.addEventListener(
           "touchend",
-          handleDocumentTouchEnd,
+          handleNativeTouchEnd,
           {
             passive: false,
           }
@@ -3464,12 +3415,12 @@ export default function BoardClient({
 
         document.addEventListener(
           "touchcancel",
-          handleDocumentTouchEnd,
+          handleNativeTouchEnd,
           {
             passive: false,
           }
         );
-      }, 300);
+      }, 350);
   }
 
   // -----------------------------------
@@ -3740,12 +3691,13 @@ export default function BoardClient({
       <div
         key={card.id}
         draggable={
-          isFinePointer
+          !isNativeAndroid
         }
         role="button"
         tabIndex={0}
         onClick={(event) => {
           if (
+            isNativeAndroid &&
             suppressCardClickRef.current
           ) {
             suppressCardClickRef.current =
@@ -3796,36 +3748,34 @@ export default function BoardClient({
             card.id
           )
         }
-        onTouchStart={(event) =>
-          handleCardTouchStart(
-            event,
-            card.id
-          )
+        onTouchStart={
+          isNativeAndroid
+            ? (event) =>
+                handleNativeCardTouchStart(
+                  event,
+                  card.id
+                )
+            : undefined
         }
         onContextMenu={(event) => {
-          if (!isFinePointer) {
+          if (isNativeAndroid) {
             event.preventDefault();
           }
         }}
         className="group cursor-pointer rounded-xl border p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:brightness-110 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
         style={{
           WebkitUserSelect:
-            isFinePointer
-              ? undefined
-              : "none",
+            isNativeAndroid
+              ? "none"
+              : undefined,
           userSelect:
-            isFinePointer
-              ? undefined
-              : "none",
+            isNativeAndroid
+              ? "none"
+              : undefined,
           background:
             priorityCardStyle.background,
           borderColor:
             priorityCardStyle.borderColor,
-          opacity:
-            mobileDraggingCardId ===
-            card.id
-              ? 0.68
-              : 1,
         }}
       >
         <div className="flex items-start justify-between gap-3">
@@ -3915,7 +3865,9 @@ export default function BoardClient({
 
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-slate-400">
-            Hold to move · Click to edit
+            {isNativeAndroid
+              ? "Hold to move · Click to edit"
+              : "Drag to move · Click to edit"}
           </span>
 
           <button
@@ -3982,13 +3934,15 @@ export default function BoardClient({
           backgroundColor:
             panelBackgroundColor,
           outline:
-            mobileDragOverStatus ===
-            status
+            isNativeAndroid &&
+            nativeDragOverStatus ===
+              status
               ? `3px solid ${accentColor}`
               : undefined,
           outlineOffset:
-            mobileDragOverStatus ===
-            status
+            isNativeAndroid &&
+            nativeDragOverStatus ===
+              status
               ? "2px"
               : undefined,
         }}
