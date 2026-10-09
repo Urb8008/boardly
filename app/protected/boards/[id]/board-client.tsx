@@ -3469,7 +3469,7 @@ export default function BoardClient({
             passive: false,
           }
         );
-      }, 450);
+      }, 300);
   }
 
   // -----------------------------------
@@ -3802,8 +3802,21 @@ export default function BoardClient({
             card.id
           )
         }
+        onContextMenu={(event) => {
+          if (!isFinePointer) {
+            event.preventDefault();
+          }
+        }}
         className="group cursor-pointer rounded-xl border p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:brightness-110 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
         style={{
+          WebkitUserSelect:
+            isFinePointer
+              ? undefined
+              : "none",
+          userSelect:
+            isFinePointer
+              ? undefined
+              : "none",
           background:
             priorityCardStyle.background,
           borderColor:
