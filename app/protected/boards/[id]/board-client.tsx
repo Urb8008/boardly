@@ -328,36 +328,14 @@ export default function BoardClient({
     Capacitor.getPlatform() === "android";
 
   const [
+    nativeDraggingCardId,
+    setNativeDraggingCardId,
+  ] = useState<number | null>(null);
+
+  const [
     nativeDragOverStatus,
     setNativeDragOverStatus,
   ] = useState<CardStatus | null>(null);
-
-  const nativeDragCardIdRef =
-    useRef<number | null>(null);
-
-  const nativeDragStartRef =
-    useRef<{ x: number; y: number } | null>(
-      null
-    );
-
-  const nativeDragPointRef =
-    useRef<{ x: number; y: number } | null>(
-      null
-    );
-
-  const nativeDragTimerRef =
-    useRef<ReturnType<typeof setTimeout> | null>(
-      null
-    );
-
-  const nativeDragActiveRef =
-    useRef(false);
-
-  const nativeDragGhostRef =
-    useRef<HTMLDivElement | null>(null);
-
-  const nativeAutoScrollFrameRef =
-    useRef<number | null>(null);
 
   const suppressCardClickRef =
     useRef(false);
@@ -3143,37 +3121,6 @@ export default function BoardClient({
     event.preventDefault();
   }
 
-  function clearNativeDragTimer() {
-    if (nativeDragTimerRef.current) {
-      clearTimeout(
-        nativeDragTimerRef.current
-      );
-
-      nativeDragTimerRef.current =
-        null;
-    }
-  }
-
-  function stopNativeAutoScroll() {
-    if (
-      nativeAutoScrollFrameRef.current !==
-      null
-    ) {
-      cancelAnimationFrame(
-        nativeAutoScrollFrameRef.current
-      );
-
-      nativeAutoScrollFrameRef.current =
-        null;
-    }
-  }
-
-  function removeNativeDragGhost() {
-    nativeDragGhostRef.current?.remove();
-    nativeDragGhostRef.current =
-      null;
-  }
-
   function getNativeDropStatus(
     x: number,
     y: number
@@ -3206,46 +3153,98 @@ export default function BoardClient({
     return null;
   }
 
-  function updateNativeDragGhost(
-    x: number,
-    y: number
+  function handleNativeCardTouchStart(
+    event:
+      React.TouchEvent<HTMLDivElement>,
+    card: Card
   ) {
-    const ghost =
-      nativeDragGhostRef.current;
-
-    if (!ghost) {
+    if (
+      !isNativeAndroid ||
+      event.touches.length !== 1
+    ) {
       return;
     }
 
-    ghost.style.left =
-      `${x}px`;
+    const startTouch =
+      event.touches[0];
 
-    ghost.style.top =
-      `${y}px`;
-  }
+    const startX =
+      startTouch.clientX;
 
-  function startNativeAutoScroll() {
-    stopNativeAutoScroll();
+    const startY =
+      startTouch.clientY;
 
-    const step = () => {
+    let lastX = startX;
+    let lastY = startY;
+    let active = false;
+    let finished = false;
+    let autoScrollFrame:
+      number | null = null;
+
+    const stopAutoScroll = () => {
       if (
-        !nativeDragActiveRef.current ||
-        !nativeDragPointRef.current
+        autoScrollFrame !== null
       ) {
-        nativeAutoScrollFrameRef.current =
+        cancelAnimationFrame(
+          autoScrollFrame
+        );
+
+        autoScrollFrame =
           null;
+      }
+    };
+
+    const cleanup = () => {
+      if (finished) {
         return;
       }
 
-      const point =
-        nativeDragPointRef.current;
+      finished = true;
+
+      clearTimeout(holdTimer);
+      stopAutoScroll();
+
+      document.removeEventListener(
+        "touchmove",
+        onTouchMove
+      );
+
+      document.removeEventListener(
+        "touchend",
+        onTouchEnd
+      );
+
+      document.removeEventListener(
+        "touchcancel",
+        onTouchEnd
+      );
+
+      setNativeDraggingCardId(
+        null
+      );
+
+      setNativeDragOverStatus(
+        null
+      );
+    };
+
+    const runAutoScroll = () => {
+      if (
+        !active ||
+        finished
+      ) {
+        autoScrollFrame =
+          null;
+
+        return;
+      }
 
       let amount = 0;
 
-      if (point.y < 125) {
+      if (lastY < 125) {
         amount = -16;
       } else if (
-        point.y >
+        lastY >
         window.innerHeight - 155
       ) {
         amount = 16;
@@ -3259,410 +3258,168 @@ export default function BoardClient({
 
         setNativeDragOverStatus(
           getNativeDropStatus(
-            point.x,
-            point.y
+            lastX,
+            lastY
           )
         );
       }
 
-      nativeAutoScrollFrameRef.current =
+      autoScrollFrame =
         requestAnimationFrame(
-          step
+          runAutoScroll
         );
     };
 
-    nativeAutoScrollFrameRef.current =
-      requestAnimationFrame(
-        step
+    const activateDrag = () => {
+      if (
+        finished ||
+        active
+      ) {
+        return;
+      }
+
+      active = true;
+
+      suppressCardClickRef.current =
+        true;
+
+      setNativeDraggingCardId(
+        card.id
       );
-  }
 
-  function cleanupNativeDrag() {
-    clearNativeDragTimer();
-    stopNativeAutoScroll();
-    removeNativeDragGhost();
+      setNativeDragOverStatus(
+        getNativeDropStatus(
+          lastX,
+          lastY
+        )
+      );
 
-    document.removeEventListener(
-      "touchmove",
-      handleNativeTouchMove
-    );
-
-    document.removeEventListener(
-      "touchend",
-      handleNativeTouchEnd
-    );
-
-    document.removeEventListener(
-      "touchcancel",
-      handleNativeTouchEnd
-    );
-
-    nativeDragCardIdRef.current =
-      null;
-
-    nativeDragStartRef.current =
-      null;
-
-    nativeDragPointRef.current =
-      null;
-
-    nativeDragActiveRef.current =
-      false;
-
-    setNativeDragOverStatus(
-      null
-    );
-  }
-
-  function beginNativeCardDrag(
-    cardElement: HTMLDivElement,
-    cardId: number,
-    x: number,
-    y: number
-  ) {
-    nativeDragActiveRef.current =
-      true;
-
-    suppressCardClickRef.current =
-      true;
-
-    nativeDragCardIdRef.current =
-      cardId;
-
-    nativeDragPointRef.current = {
-      x,
-      y,
+      autoScrollFrame =
+        requestAnimationFrame(
+          runAutoScroll
+        );
     };
 
-    const rect =
-      cardElement.getBoundingClientRect();
-
-    const ghost =
-      cardElement.cloneNode(
-        true
-      ) as HTMLDivElement;
-
-    ghost.removeAttribute("draggable");
-
-    ghost.style.position =
-      "fixed";
-
-    ghost.style.zIndex =
-      "9999";
-
-    ghost.style.width =
-      `${rect.width}px`;
-
-    ghost.style.maxHeight =
-      "60vh";
-
-    ghost.style.overflow =
-      "hidden";
-
-    ghost.style.left =
-      `${x}px`;
-
-    ghost.style.top =
-      `${y}px`;
-
-    ghost.style.transform =
-      "translate(-50%, -50%) scale(0.98)";
-
-    ghost.style.opacity =
-      "0.88";
-
-    ghost.style.pointerEvents =
-      "none";
-
-    ghost.style.boxShadow =
-      "0 18px 45px rgba(15, 23, 42, 0.35)";
-
-    ghost.style.transition =
-      "none";
-
-    ghost.style.userSelect =
-      "none";
-
-    ghost.style.webkitUserSelect =
-      "none";
-
-    document.body.appendChild(
-      ghost
-    );
-
-    nativeDragGhostRef.current =
-      ghost;
-
-    setNativeDragOverStatus(
-      getNativeDropStatus(
-        x,
-        y
-      )
-    );
-
-    document.addEventListener(
-      "touchmove",
-      handleNativeTouchMove,
-      {
-        passive: false,
+    const onTouchMove = (
+      moveEvent: TouchEvent
+    ) => {
+      if (
+        moveEvent.touches.length !== 1 ||
+        finished
+      ) {
+        return;
       }
-    );
 
-    document.addEventListener(
-      "touchend",
-      handleNativeTouchEnd,
-      {
-        passive: false,
+      const touch =
+        moveEvent.touches[0];
+
+      lastX = touch.clientX;
+      lastY = touch.clientY;
+
+      if (!active) {
+        const distance =
+          Math.hypot(
+            lastX - startX,
+            lastY - startY
+          );
+
+        if (distance > 12) {
+          cleanup();
+        }
+
+        return;
       }
-    );
 
-    document.addEventListener(
-      "touchcancel",
-      handleNativeTouchEnd,
-      {
-        passive: false,
-      }
-    );
+      moveEvent.preventDefault();
 
-    startNativeAutoScroll();
-  }
-
-  function handleNativeTouchMove(
-    event: TouchEvent
-  ) {
-    if (
-      !nativeDragActiveRef.current ||
-      event.touches.length !== 1
-    ) {
-      return;
-    }
-
-    event.preventDefault();
-
-    const touch =
-      event.touches[0];
-
-    nativeDragPointRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
+      setNativeDragOverStatus(
+        getNativeDropStatus(
+          lastX,
+          lastY
+        )
+      );
     };
 
-    updateNativeDragGhost(
-      touch.clientX,
-      touch.clientY
-    );
+    const onTouchEnd = (
+      endEvent: TouchEvent
+    ) => {
+      if (finished) {
+        return;
+      }
 
-    setNativeDragOverStatus(
-      getNativeDropStatus(
-        touch.clientX,
-        touch.clientY
-      )
-    );
-  }
+      if (!active) {
+        cleanup();
+        return;
+      }
 
-  function handleNativeTouchEnd(
-    event: TouchEvent
-  ) {
-    if (!nativeDragActiveRef.current) {
-      return;
-    }
+      endEvent.preventDefault();
 
-    event.preventDefault();
+      const endTouch =
+        endEvent.changedTouches[0];
 
-    const cardId =
-      nativeDragCardIdRef.current;
+      if (endTouch) {
+        lastX = endTouch.clientX;
+        lastY = endTouch.clientY;
+      }
 
-    const point =
-      nativeDragPointRef.current;
-
-    if (cardId && point) {
       const status =
         getNativeDropStatus(
-          point.x,
-          point.y
-        );
-
-      const currentCard =
-        cards.find(
-          (card) =>
-            card.id === cardId
+          lastX,
+          lastY
         );
 
       if (
         status &&
-        currentCard &&
-        currentCard.status !==
-          status
+        card.status !== status
       ) {
         void moveCard(
-          cardId,
+          card.id,
           status
         );
       }
-    }
 
-    cleanupNativeDrag();
+      cleanup();
 
-    window.setTimeout(
-      () => {
-        suppressCardClickRef.current =
-          false;
-      },
-      250
-    );
-  }
-
-  function handleNativeCardTouchStart(
-    event:
-      React.TouchEvent<HTMLDivElement>,
-    cardId: number
-  ) {
-    if (
-      !isNativeAndroid ||
-      event.touches.length !== 1
-    ) {
-      return;
-    }
-
-    clearNativeDragTimer();
-
-    const touch =
-      event.touches[0];
-
-    const startX =
-      touch.clientX;
-
-    const startY =
-      touch.clientY;
-
-    nativeDragStartRef.current = {
-      x: startX,
-      y: startY,
-    };
-
-    nativeDragPointRef.current = {
-      x: startX,
-      y: startY,
-    };
-
-    const cardElement =
-      event.currentTarget;
-
-    const cancelBeforeHold = (
-      moveEvent: TouchEvent
-    ) => {
-      if (
-        nativeDragActiveRef.current
-      ) {
-        return;
-      }
-
-      if (
-        moveEvent.touches.length !== 1 ||
-        !nativeDragStartRef.current
-      ) {
-        clearNativeDragTimer();
-
-        document.removeEventListener(
-          "touchmove",
-          cancelBeforeHold
-        );
-
-        return;
-      }
-
-      const moveTouch =
-        moveEvent.touches[0];
-
-      const distance =
-        Math.hypot(
-          moveTouch.clientX -
-            startX,
-          moveTouch.clientY -
-            startY
-        );
-
-      if (distance > 12) {
-        clearNativeDragTimer();
-
-        document.removeEventListener(
-          "touchmove",
-          cancelBeforeHold
-        );
-      }
-    };
-
-    const cancelHold = () => {
-      if (
-        !nativeDragActiveRef.current
-      ) {
-        clearNativeDragTimer();
-      }
-
-      document.removeEventListener(
-        "touchmove",
-        cancelBeforeHold
-      );
-
-      document.removeEventListener(
-        "touchend",
-        cancelHold
-      );
-
-      document.removeEventListener(
-        "touchcancel",
-        cancelHold
+      window.setTimeout(
+        () => {
+          suppressCardClickRef.current =
+            false;
+        },
+        250
       );
     };
 
+    // Attach the non-passive listener immediately. We do not
+    // prevent scrolling unless the long-press has activated drag.
     document.addEventListener(
       "touchmove",
-      cancelBeforeHold,
+      onTouchMove,
       {
-        passive: true,
+        passive: false,
       }
     );
 
     document.addEventListener(
       "touchend",
-      cancelHold,
+      onTouchEnd,
       {
-        passive: true,
+        passive: false,
       }
     );
 
     document.addEventListener(
       "touchcancel",
-      cancelHold,
+      onTouchEnd,
       {
-        passive: true,
+        passive: false,
       }
     );
 
-    nativeDragTimerRef.current =
-      setTimeout(() => {
-        document.removeEventListener(
-          "touchmove",
-          cancelBeforeHold
-        );
-
-        document.removeEventListener(
-          "touchend",
-          cancelHold
-        );
-
-        document.removeEventListener(
-          "touchcancel",
-          cancelHold
-        );
-
-        beginNativeCardDrag(
-          cardElement,
-          cardId,
-          startX,
-          startY
-        );
-      }, 320);
+    const holdTimer =
+      window.setTimeout(
+        activateDrag,
+        320
+      );
   }
 
   // -----------------------------------
@@ -3993,7 +3750,7 @@ export default function BoardClient({
             ? (event) =>
                 handleNativeCardTouchStart(
                   event,
-                  card.id
+                  card
                 )
             : undefined
         }
@@ -4016,6 +3773,16 @@ export default function BoardClient({
             priorityCardStyle.background,
           borderColor:
             priorityCardStyle.borderColor,
+          opacity:
+            nativeDraggingCardId ===
+            card.id
+              ? 0.58
+              : 1,
+          transform:
+            nativeDraggingCardId ===
+            card.id
+              ? "scale(0.98)"
+              : undefined,
         }}
       >
         <div className="flex items-start justify-between gap-3">
