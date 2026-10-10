@@ -3165,6 +3165,9 @@ export default function BoardClient({
       return;
     }
 
+    const cardElement =
+      event.currentTarget;
+
     const startTouch =
       event.touches[0];
 
@@ -3174,12 +3177,66 @@ export default function BoardClient({
     const startY =
       startTouch.clientY;
 
+    const startScrollY =
+      window.scrollY;
+
     let lastX = startX;
     let lastY = startY;
     let active = false;
     let finished = false;
     let autoScrollFrame:
       number | null = null;
+
+    const resetCardVisual = () => {
+      cardElement.style.transform =
+        "";
+
+      cardElement.style.zIndex =
+        "";
+
+      cardElement.style.position =
+        "";
+
+      cardElement.style.pointerEvents =
+        "";
+
+      cardElement.style.boxShadow =
+        "";
+
+      cardElement.style.transition =
+        "";
+    };
+
+    const updateCardVisual = () => {
+      if (!active) {
+        return;
+      }
+
+      const deltaX =
+        lastX - startX;
+
+      const deltaY =
+        lastY -
+        startY +
+        (window.scrollY -
+          startScrollY);
+
+      cardElement.style.transform =
+        `translate(${deltaX}px, ${deltaY}px) scale(1.02)`;
+    };
+
+    const getTargetStatus = () => {
+      const status =
+        getNativeDropStatus(
+          lastX,
+          lastY
+        );
+
+      return status &&
+        status !== card.status
+        ? status
+        : null;
+    };
 
     const stopAutoScroll = () => {
       if (
@@ -3203,6 +3260,7 @@ export default function BoardClient({
 
       clearTimeout(holdTimer);
       stopAutoScroll();
+      resetCardVisual();
 
       document.removeEventListener(
         "touchmove",
@@ -3256,11 +3314,10 @@ export default function BoardClient({
           amount
         );
 
+        updateCardVisual();
+
         setNativeDragOverStatus(
-          getNativeDropStatus(
-            lastX,
-            lastY
-          )
+          getTargetStatus()
         );
       }
 
@@ -3287,12 +3344,27 @@ export default function BoardClient({
         card.id
       );
 
+      // Do NOT highlight the current/source column.
       setNativeDragOverStatus(
-        getNativeDropStatus(
-          lastX,
-          lastY
-        )
+        null
       );
+
+      cardElement.style.position =
+        "relative";
+
+      cardElement.style.zIndex =
+        "60";
+
+      cardElement.style.pointerEvents =
+        "none";
+
+      cardElement.style.transition =
+        "none";
+
+      cardElement.style.boxShadow =
+        "0 18px 45px rgba(15, 23, 42, 0.32)";
+
+      updateCardVisual();
 
       autoScrollFrame =
         requestAnimationFrame(
@@ -3332,11 +3404,10 @@ export default function BoardClient({
 
       moveEvent.preventDefault();
 
+      updateCardVisual();
+
       setNativeDragOverStatus(
-        getNativeDropStatus(
-          lastX,
-          lastY
-        )
+        getTargetStatus()
       );
     };
 
@@ -3363,15 +3434,9 @@ export default function BoardClient({
       }
 
       const status =
-        getNativeDropStatus(
-          lastX,
-          lastY
-        );
+        getTargetStatus();
 
-      if (
-        status &&
-        card.status !== status
-      ) {
+      if (status) {
         void moveCard(
           card.id,
           status
@@ -3389,8 +3454,6 @@ export default function BoardClient({
       );
     };
 
-    // Attach the non-passive listener immediately. We do not
-    // prevent scrolling unless the long-press has activated drag.
     document.addEventListener(
       "touchmove",
       onTouchMove,
@@ -3773,16 +3836,6 @@ export default function BoardClient({
             priorityCardStyle.background,
           borderColor:
             priorityCardStyle.borderColor,
-          opacity:
-            nativeDraggingCardId ===
-            card.id
-              ? 0.58
-              : 1,
-          transform:
-            nativeDraggingCardId ===
-            card.id
-              ? "scale(0.98)"
-              : undefined,
         }}
       >
         <div className="flex items-start justify-between gap-3">
@@ -3873,7 +3926,7 @@ export default function BoardClient({
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-slate-400">
             {isNativeAndroid
-              ? "Hold and drag to move · Click to edit"
+              ? "Hold card, then drag to another section"
               : "Drag to move · Click to edit"}
           </span>
 
