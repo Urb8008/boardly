@@ -1346,11 +1346,6 @@ export default function BoardsPage() {
                     board.user_id ===
                     currentUserId;
 
-                  const links =
-                    boardLinks[
-                      board.id
-                    ] || [];
-
                   return (
                     <div
                       key={board.id}
@@ -1520,22 +1515,6 @@ export default function BoardsPage() {
                                   </button>
                                 )}
 
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    openLinkModal(
-                                      board
-                                    )
-                                  }
-                                  className="inline-flex w-auto items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
-                                  style={{
-                                    backgroundColor:
-                                      accentColor,
-                                  }}
-                                >
-                                  + Add link
-                                </button>
-
                                 {isOwner && (
                                   <div className="group/preferences relative">
                                     <button
@@ -1702,69 +1681,6 @@ export default function BoardsPage() {
                                 )}
                               </div>
 
-                              {links.length > 0 && (
-                                <>
-                                  <div className="my-2 border-t border-slate-200/80" />
-
-                                  <p className="px-1 pb-2 pt-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                                    Links
-                                  </p>
-
-                                  <div className="flex flex-wrap gap-2">
-                                    {links.map(
-                                      (link) => (
-                                        <div
-                                          key={
-                                            link.id
-                                          }
-                                          className="group/link relative"
-                                        >
-                                          <a
-                                            href={
-                                              link.url
-                                            }
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                                            title={getLinkLabel(
-                                              link
-                                            )}
-                                          >
-                                            <img
-                                              src={getLinkIconUrl(
-                                                link.url
-                                              )}
-                                              alt=""
-                                              className="h-5 w-5 rounded-sm"
-                                            />
-                                            <span className="sr-only">
-                                              {getLinkLabel(
-                                                link
-                                              )}
-                                            </span>
-                                          </a>
-
-                                          {link.user_id ===
-                                            currentUserId && (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                deleteBoardLink(
-                                                  link
-                                                )
-                                              }
-                                              className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold text-white shadow group-hover/link:flex"
-                                              title="Delete link"
-                                            >
-                                              ×
-                                            </button>
-                                          )}
-                                        </div>
-                                      )
-                                    )}
-                                  </div>
-                                </>
-                              )}
                             </div>
                               </div>
                             </div>
