@@ -3235,6 +3235,82 @@ export default function BoardClient({
     );
   }
 
+  async function moveCardNativeInstant(
+    cardId: number,
+    newStatus: CardStatus
+  ) {
+    const movedCard =
+      cards.find(
+        (card) =>
+          card.id === cardId
+      );
+
+    if (!movedCard) {
+      return;
+    }
+
+    const previousStatus =
+      movedCard.status;
+
+    // Android only: move the card in the UI immediately.
+    setCards(
+      (currentCards) =>
+        currentCards.map(
+          (card) =>
+            card.id === cardId
+              ? {
+                  ...card,
+                  status:
+                    newStatus,
+                }
+              : card
+        )
+    );
+
+    const { error } =
+      await supabase
+        .from("cards")
+        .update({
+          status: newStatus,
+        })
+        .eq("id", cardId)
+        .eq(
+          "board_id",
+          boardId
+        );
+
+    if (error) {
+      // Put it back if Supabase rejects the move.
+      setCards(
+        (currentCards) =>
+          currentCards.map(
+            (card) =>
+              card.id ===
+              cardId
+                ? {
+                    ...card,
+                    status:
+                      previousStatus,
+                  }
+                : card
+          )
+      );
+
+      alert(
+        `Error moving card: ${error.message}`
+      );
+
+      return;
+    }
+
+    // Do not hold up the visual drop while push/notification work runs.
+    void recordBoardChange(
+      "Card moved",
+      `“${movedCard.title || "A card"}” was moved on ${board?.name || "this board"}.`,
+      "card_moved"
+    );
+  }
+
   function handleDragStart(
     event:
       React.DragEvent<HTMLDivElement>,
@@ -3349,7 +3425,7 @@ export default function BoardClient({
       return;
     }
 
-    void moveCard(
+    void moveCardNativeInstant(
       cardId,
       newStatus
     );
