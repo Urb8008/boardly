@@ -81,8 +81,6 @@ const privateKey = await importPKCS8(
 
     const now = Math.floor(Date.now() / 1000);
 
-    // JaaS expects kid in the form:
-    // <AppID>/<API_KEY_ID>
     const fullKeyId =
       keyId.includes("/")
         ? keyId
@@ -100,7 +98,7 @@ const privateKey = await importPKCS8(
       aud: "jitsi",
       iss: "chat",
       sub: appId,
-      room: roomName,
+      room: "*",
       context: {
         user: {
           id: user.id,
