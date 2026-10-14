@@ -244,6 +244,21 @@ export default function MessengerClient({
     >([]);
 
   const [
+    selectedMessageIds,
+    setSelectedMessageIds,
+  ] = useState<number[]>([]);
+
+  const [
+    selectionMode,
+    setSelectionMode,
+  ] = useState(false);
+
+  const [
+    deletingMessages,
+    setDeletingMessages,
+  ] = useState(false);
+
+  const [
     currentUserId,
     setCurrentUserId,
   ] =
@@ -854,6 +869,123 @@ export default function MessengerClient({
 
       return;
     }
+
+    await loadMessages();
+  }
+
+  function toggleMessageSelection(
+    messageId: number
+  ) {
+    setSelectedMessageIds(
+      (current) =>
+        current.includes(
+          messageId
+        )
+          ? current.filter(
+              (id) =>
+                id !==
+                messageId
+            )
+          : [
+              ...current,
+              messageId,
+            ]
+    );
+  }
+
+  function cancelMessageSelection() {
+    setSelectionMode(false);
+    setSelectedMessageIds([]);
+  }
+
+  async function deleteSelectedMessages() {
+    if (
+      selectedMessageIds.length ===
+      0
+    ) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Delete ${selectedMessageIds.length} selected message${selectedMessageIds.length === 1 ? "" : "s"}?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingMessages(true);
+
+    const {
+      error,
+    } =
+      await supabase.rpc(
+        "delete_selected_board_messages",
+        {
+          target_board_id:
+            boardId,
+          target_message_ids:
+            selectedMessageIds,
+        }
+      );
+
+    setDeletingMessages(false);
+
+    if (error) {
+      alert(
+        `Error deleting messages: ${error.message}`
+      );
+
+      return;
+    }
+
+    cancelMessageSelection();
+
+    await loadMessages();
+  }
+
+  async function clearAllMessages() {
+    if (
+      board?.user_id !==
+      currentUserId
+    ) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        "Clear all messages from this board chat? This cannot be undone."
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingMessages(true);
+
+    const {
+      error,
+    } =
+      await supabase.rpc(
+        "clear_board_messages",
+        {
+          target_board_id:
+            boardId,
+        }
+      );
+
+    setDeletingMessages(false);
+
+    if (error) {
+      alert(
+        `Error clearing messages: ${error.message}`
+      );
+
+      return;
+    }
+
+    cancelMessageSelection();
 
     await loadMessages();
   }
@@ -1478,8 +1610,80 @@ export default function MessengerClient({
                 </p>
               </div>
 
-              <div className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-                ● Live
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {messages.length > 0 &&
+                  (selectionMode ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={
+                          deleteSelectedMessages
+                        }
+                        disabled={
+                          deletingMessages ||
+                          selectedMessageIds.length ===
+                            0
+                        }
+                        className="rounded-full bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Delete{" "}
+                        {selectedMessageIds.length >
+                        0
+                          ? `(${selectedMessageIds.length})`
+                          : ""}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={
+                          cancelMessageSelection
+                        }
+                        disabled={
+                          deletingMessages
+                        }
+                        className="rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-white disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectionMode(
+                          true
+                        );
+                        setSelectedMessageIds(
+                          []
+                        );
+                      }}
+                      className="rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-white"
+                    >
+                      Select
+                    </button>
+                  ))}
+
+                {board?.user_id ===
+                  currentUserId &&
+                  messages.length >
+                    0 && (
+                    <button
+                      type="button"
+                      onClick={
+                        clearAllMessages
+                      }
+                      disabled={
+                        deletingMessages
+                      }
+                      className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700 ring-1 ring-red-200 hover:bg-red-100 disabled:opacity-50"
+                    >
+                      Clear all
+                    </button>
+                  )}
+
+                <div className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+                  ● Live
+                </div>
               </div>
             </div>
           </div>
@@ -1520,17 +1724,51 @@ export default function MessengerClient({
                       message.user_id ===
                       currentUserId;
 
+                    const canDelete =
+                      isMine ||
+                      board?.user_id ===
+                        currentUserId;
+
+                    const isSelected =
+                      selectedMessageIds.includes(
+                        message.id
+                      );
+
                     return (
                       <div
                         key={
                           message.id
                         }
-                        className={`flex ${
+                        className={`flex items-start gap-2 ${
                           isMine
                             ? "justify-end"
                             : "justify-start"
                         }`}
                       >
+                        {selectionMode &&
+                          canDelete && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleMessageSelection(
+                                  message.id
+                                )
+                              }
+                              aria-label={
+                                isSelected
+                                  ? "Deselect message"
+                                  : "Select message"
+                              }
+                              className={`mt-6 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs font-bold ${
+                                isSelected
+                                  ? "border-red-600 bg-red-600 text-white"
+                                  : "border-slate-300 bg-white/90 text-transparent"
+                              }`}
+                            >
+                              ✓
+                            </button>
+                          )}
+
                         <div
                           className={`max-w-[78%] ${
                             isMine
@@ -1555,7 +1793,22 @@ export default function MessengerClient({
                           </div>
 
                           <div
+                            onClick={() => {
+                              if (
+                                selectionMode &&
+                                canDelete
+                              ) {
+                                toggleMessageSelection(
+                                  message.id
+                                );
+                              }
+                            }}
                             className={`rounded-2xl px-4 py-3 text-sm leading-6 ${
+                              selectionMode &&
+                              canDelete
+                                ? "cursor-pointer "
+                                : ""
+                            }${
                               isMine
                                 ? "rounded-br-md text-white"
                                 : "rounded-bl-md border border-slate-200 bg-white text-slate-800"
@@ -1573,19 +1826,6 @@ export default function MessengerClient({
                             </p>
                           </div>
 
-                          {isMine && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                deleteMessage(
-                                  message
-                                )
-                              }
-                              className="mt-1 px-1 text-xs text-slate-400 hover:text-red-600"
-                            >
-                              Delete
-                            </button>
-                          )}
                         </div>
                       </div>
                     );
