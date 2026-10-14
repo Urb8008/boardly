@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Capacitor } from "@capacitor/core";
 import {
   DndContext,
-  DragOverlay,
   MouseSensor,
   TouchSensor,
   closestCenter,
@@ -317,6 +316,7 @@ function NativeDraggableCardShell({
     listeners,
     setNodeRef,
     isDragging,
+    transform,
   } = useDraggable({
     id: `card-${cardId}`,
     data: {
@@ -340,10 +340,30 @@ function NativeDraggableCardShell({
           "none",
         WebkitTouchCallout:
           "none",
+        transform:
+          transform
+            ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+            : undefined,
+        position:
+          isDragging
+            ? "relative"
+            : undefined,
+        zIndex:
+          isDragging
+            ? 999
+            : undefined,
         opacity:
           isDragging
-            ? 0.12
+            ? 0.92
             : 1,
+        boxShadow:
+          isDragging
+            ? "0 18px 45px rgba(15, 23, 42, 0.35)"
+            : undefined,
+        willChange:
+          isDragging
+            ? "transform"
+            : undefined,
       }}
     >
       {children}
@@ -427,13 +447,6 @@ export default function BoardClient({
     isNativeAndroid,
     setIsNativeAndroid,
   ] = useState(false);
-
-  const [
-    activeNativeCardId,
-    setActiveNativeCardId,
-  ] = useState<number | null>(
-    null
-  );
 
   const nativeDragJustEndedRef =
     useRef(false);
@@ -3263,21 +3276,10 @@ export default function BoardClient({
   }
 
   function handleNativeDragStart(
-    event: DragStartEvent
+    _event: DragStartEvent
   ) {
-    const cardId =
-      Number(
-        event.active.data.current
-          ?.cardId
-      );
-
-    if (!cardId) {
-      return;
-    }
-
-    setActiveNativeCardId(
-      cardId
-    );
+    // The actual Android card is transformed by dnd-kit,
+    // so no separate drag overlay is needed.
   }
 
   function finishNativeDragClickGuard() {
@@ -3315,10 +3317,6 @@ export default function BoardClient({
       event.over?.id as
         | CardStatus
         | undefined;
-
-    setActiveNativeCardId(
-      null
-    );
 
     finishNativeDragClickGuard();
 
@@ -3358,10 +3356,6 @@ export default function BoardClient({
   }
 
   function handleNativeDragCancel() {
-    setActiveNativeCardId(
-      null
-    );
-
     finishNativeDragClickGuard();
   }
 
@@ -4585,34 +4579,6 @@ export default function BoardClient({
                   />
                 </div>
 
-                <DragOverlay
-                  dropAnimation={
-                    null
-                  }
-                >
-                  {(() => {
-                    if (
-                      !activeNativeCardId
-                    ) {
-                      return null;
-                    }
-
-                    const activeCard =
-                      cards.find(
-                        (card) =>
-                          card.id ===
-                          activeNativeCardId
-                      );
-
-                    return activeCard
-                      ? renderCard(
-                          activeCard,
-                          true,
-                          true
-                        )
-                      : null;
-                  })()}
-                </DragOverlay>
               </DndContext>
             ) : (
               <div className="mt-6 grid gap-4 pb-4 md:mt-8 md:flex md:gap-6 md:overflow-x-auto md:pb-8">
