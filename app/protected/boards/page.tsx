@@ -1490,7 +1490,11 @@ export default function BoardsPage() {
                   return (
                     <div
                       key={board.id}
-                      className="group relative overflow-visible rounded-2xl border border-white/45 shadow-md backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl"
+                      className={`group relative overflow-visible rounded-2xl border border-white/45 shadow-md backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl ${
+                        openBoardMenuId === board.id
+                          ? "z-[90]"
+                          : "z-0"
+                      }`}
                       style={{
                         backgroundColor:
                           getBoardCardBackground(
@@ -1657,11 +1661,11 @@ export default function BoardsPage() {
                             </button>
 
                             <div
-                              className={`absolute bottom-full right-0 z-[100] mb-2 min-w-max rounded-2xl border border-white/70 bg-white/90 p-2 text-left shadow-xl backdrop-blur-xl transition-all duration-150 ${
+                              className={`absolute right-0 top-full z-[100] mt-2 min-w-max rounded-2xl border border-white/70 bg-white/95 p-2 text-left shadow-xl backdrop-blur-xl transition-all duration-150 md:bottom-full md:top-auto md:mb-2 md:mt-0 ${
                                 openBoardMenuId ===
                                 board.id
                                   ? "visible translate-y-0 opacity-100"
-                                  : "invisible translate-y-1 opacity-0"
+                                  : "invisible -translate-y-1 opacity-0 md:translate-y-1"
                               } md:group-hover/menu:visible md:group-hover/menu:translate-y-0 md:group-hover/menu:opacity-100`}
                               onClick={(event) =>
                                 event.stopPropagation()
@@ -1721,7 +1725,7 @@ export default function BoardsPage() {
                                     </button>
 
                                     <div
-                                      className={`absolute right-full top-0 z-[120] mr-2 w-52 rounded-2xl border border-white/70 bg-white/95 p-3 shadow-xl backdrop-blur-xl transition-all duration-150 ${
+                                      className={`absolute right-0 top-full z-[120] mt-2 w-52 rounded-2xl border border-white/70 bg-white/95 p-3 shadow-xl backdrop-blur-xl transition-all duration-150 md:right-full md:top-0 md:mr-2 md:mt-0 ${
                                         openBoardPreferencesId ===
                                         board.id
                                           ? "visible translate-x-0 opacity-100"
