@@ -63,7 +63,30 @@ function enhanceNavigation(
   grid.style.gridTemplateColumns =
     `repeat(${buttons.length + 1}, minmax(0, 1fr))`;
 
+  // Keep the mobile bottom bar compact across all areas.
+  const navigation = grid.parentElement as HTMLElement | null;
+
+  if (navigation) {
+    navigation.style.paddingTop = "0.35rem";
+    navigation.style.paddingLeft = "0.45rem";
+    navigation.style.paddingRight = "0.45rem";
+    navigation.style.paddingBottom =
+      "max(0.35rem, env(safe-area-inset-bottom))";
+  }
+
+  grid.style.gap = "0.3rem";
+
   for (const button of buttons) {
+    button.style.minHeight = "46px";
+    button.style.padding = "0.3rem 0.45rem";
+    button.style.borderRadius = "0.9rem";
+    button.style.fontSize = "0.72rem";
+
+    const icon = button.querySelector<HTMLElement>("span:first-child");
+    if (icon) {
+      icon.style.fontSize = "1.15rem";
+    }
+
     if (
       button.style.backgroundColor
     ) {
@@ -250,7 +273,7 @@ export default function MobileNavigationEnhancer() {
       }
       aria-label="Go back"
       title="Back"
-      className="order-first flex min-h-14 flex-col items-center justify-center rounded-2xl border border-white/70 px-2 py-2 text-slate-700 shadow-sm backdrop-blur-xl transition active:scale-95"
+      className="order-first flex min-h-[46px] flex-col items-center justify-center rounded-[0.9rem] border border-white/70 px-2 py-1.5 text-slate-700 shadow-sm backdrop-blur-xl transition active:scale-95"
       style={{
         backgroundColor:
           "rgba(255, 255, 255, 0.58)",
@@ -260,7 +283,7 @@ export default function MobileNavigationEnhancer() {
     >
       <span
         aria-hidden="true"
-        className="text-2xl font-bold leading-none"
+        className="text-xl font-bold leading-none"
       >
         ←
       </span>
