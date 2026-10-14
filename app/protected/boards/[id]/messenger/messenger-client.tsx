@@ -545,8 +545,12 @@ export default function MessengerClient({
               width: "100%",
               height: 620,
               configOverwrite: {
-                prejoinPageEnabled:
-                  false,
+                prejoinConfig: {
+                  enabled: false,
+                },
+                disableInitialGUM: true,
+                startWithAudioMuted: true,
+                startWithVideoMuted: false,
                 disableDeepLinking:
                   true,
               },
