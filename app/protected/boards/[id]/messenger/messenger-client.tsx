@@ -279,6 +279,11 @@ export default function MessengerClient({
     useState("");
 
   const [
+    emojiPickerOpen,
+    setEmojiPickerOpen,
+  ] = useState(false);
+
+  const [
     loading,
     setLoading,
   ] =
@@ -760,6 +765,15 @@ export default function MessengerClient({
     );
 
     await markMessagesRead();
+  }
+
+  function addEmoji(
+    emoji: string
+  ) {
+    setNewMessage(
+      (current) =>
+        `${current}${emoji}`
+    );
   }
 
   async function sendMessage() {
@@ -1857,6 +1871,83 @@ export default function MessengerClient({
             )}
 
             <div className="flex items-end gap-3">
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEmojiPickerOpen(
+                      (current) =>
+                        !current
+                    )
+                  }
+                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 bg-white/85 text-2xl shadow-sm transition hover:bg-white"
+                  aria-label="Open emoji picker"
+                  title="Add emoji"
+                >
+                  😊
+                </button>
+
+                {emojiPickerOpen && (
+                  <div className="absolute bottom-14 left-0 z-50 grid w-56 grid-cols-6 gap-1 rounded-2xl border border-white/70 bg-white/95 p-3 shadow-xl backdrop-blur-xl">
+                    {[
+                      "😀",
+                      "😂",
+                      "😊",
+                      "😍",
+                      "🥰",
+                      "😎",
+                      "🤔",
+                      "😢",
+                      "😭",
+                      "😡",
+                      "👍",
+                      "👎",
+                      "👏",
+                      "🙏",
+                      "💪",
+                      "👌",
+                      "❤️",
+                      "💙",
+                      "💚",
+                      "💛",
+                      "🔥",
+                      "🎉",
+                      "✅",
+                      "❌",
+                      "⭐",
+                      "🚀",
+                      "💡",
+                      "📌",
+                      "📚",
+                      "☕",
+                    ].map(
+                      (emoji) => (
+                        <button
+                          key={
+                            emoji
+                          }
+                          type="button"
+                          onClick={() => {
+                            addEmoji(
+                              emoji
+                            );
+                            setEmojiPickerOpen(
+                              false
+                            );
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-xl transition hover:bg-slate-100"
+                          aria-label={`Add ${emoji}`}
+                        >
+                          {
+                            emoji
+                          }
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+
               <textarea
                 value={
                   newMessage
