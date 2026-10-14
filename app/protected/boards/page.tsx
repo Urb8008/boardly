@@ -447,14 +447,52 @@ export default function BoardsPage() {
   useEffect(() => {
     if (!currentUserId) return;
 
-    void loadUnreadBoardCounts();
+    let refreshTimer: number | null = null;
+    let refreshInFlight = false;
+    let refreshQueued = false;
 
-    const refreshUnread = () => {
-      void loadUnreadBoardCounts();
+    const runUnreadRefresh = async () => {
+      if (refreshInFlight) {
+        refreshQueued = true;
+        return;
+      }
+
+      refreshInFlight = true;
+
+      try {
+        await loadUnreadBoardCounts();
+      } finally {
+        refreshInFlight = false;
+
+        if (refreshQueued) {
+          refreshQueued = false;
+          refreshTimer = window.setTimeout(
+            () => {
+              refreshTimer = null;
+              void runUnreadRefresh();
+            },
+            120
+          );
+        }
+      }
     };
 
-    const messageChannel = supabase
-      .channel(`boards-unread-messages-${currentUserId}`)
+    const refreshUnread = () => {
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+      }
+
+      refreshTimer = window.setTimeout(
+        () => {
+          refreshTimer = null;
+          void runUnreadRefresh();
+        },
+        120
+      );
+    };
+
+    const unreadChannel = supabase
+      .channel(`boards-unread-${currentUserId}`)
       .on(
         "postgres_changes",
         {
@@ -464,10 +502,6 @@ export default function BoardsPage() {
         },
         refreshUnread
       )
-      .subscribe();
-
-    const notificationChannel = supabase
-      .channel(`boards-unread-activity-${currentUserId}`)
       .on(
         "postgres_changes",
         {
@@ -478,10 +512,6 @@ export default function BoardsPage() {
         },
         refreshUnread
       )
-      .subscribe();
-
-    const messageReadsChannel = supabase
-      .channel(`boards-message-reads-${currentUserId}`)
       .on(
         "postgres_changes",
         {
@@ -492,10 +522,6 @@ export default function BoardsPage() {
         },
         refreshUnread
       )
-      .subscribe();
-
-    const activityReadsChannel = supabase
-      .channel(`boards-activity-reads-${currentUserId}`)
       .on(
         "postgres_changes",
         {
@@ -509,10 +535,11 @@ export default function BoardsPage() {
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(messageChannel);
-      void supabase.removeChannel(notificationChannel);
-      void supabase.removeChannel(messageReadsChannel);
-      void supabase.removeChannel(activityReadsChannel);
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+      }
+
+      void supabase.removeChannel(unreadChannel);
     };
   }, [currentUserId]);
 
@@ -532,9 +559,8 @@ export default function BoardsPage() {
     await Promise.all([
       loadBoardsAndStats(),
       loadPreferences(user.id),
+      loadUnreadBoardCounts(),
     ]);
-
-    await loadUnreadBoardCounts();
 
     setLoading(false);
   }
@@ -625,7 +651,9 @@ export default function BoardsPage() {
       error: boardsError,
     } = await supabase
       .from("boards")
-      .select("*")
+      .select(
+        "id, name, user_id, board_color, board_opacity"
+      )
       .order("created_at", {
         ascending: false,
       });
@@ -730,7 +758,9 @@ export default function BoardsPage() {
       error: linksError,
     } = await supabase
       .from("board_links")
-      .select("*")
+      .select(
+        "id, board_id, user_id, label, url, created_at"
+      )
       .in("board_id", boardIds)
       .order("created_at", {
         ascending: true,
@@ -1259,7 +1289,7 @@ export default function BoardsPage() {
     }
   }
 
-  async function openBoard(boardId: number) {
+  function openBoard(boardId: number) {
     setUnreadBoardCounts((current) => ({
       ...current,
       [boardId]: Math.max(
@@ -1268,23 +1298,25 @@ export default function BoardsPage() {
       ),
     }));
 
-    const { error } = await supabase.rpc(
-      "mark_board_activity_read",
-      {
-        target_board_id: boardId,
-      }
-    );
-
-    if (error) {
-      console.error(
-        "Error marking board activity read:",
-        error.message
-      );
-    }
-
     router.push(
       `/protected/boards/${boardId}`
     );
+
+    void supabase
+      .rpc(
+        "mark_board_activity_read",
+        {
+          target_board_id: boardId,
+        }
+      )
+      .then(({ error }) => {
+        if (error) {
+          console.error(
+            "Error marking board activity read:",
+            error.message
+          );
+        }
+      });
   }
 
   async function logout() {

@@ -11,39 +11,18 @@ import {
 } from "next/navigation";
 
 function findBottomNavigationGrid() {
-  const candidates =
-    Array.from(
-      document.querySelectorAll<HTMLElement>(
-        "nav, div"
-      )
-    );
-
   const navigation =
-    candidates.find((element) => {
-      const classes =
-        element.classList;
-
-      return (
-        classes.contains("fixed") &&
-        classes.contains("inset-x-0") &&
-        classes.contains("bottom-0") &&
-        classes.contains("z-40")
-      );
-    });
+    document.querySelector<HTMLElement>(
+      "nav.fixed.inset-x-0.bottom-0.z-40, div.fixed.inset-x-0.bottom-0.z-40"
+    );
 
   if (!navigation) {
     return null;
   }
 
-  return (
-    Array.from(
-      navigation.children
-    ).find(
-      (child) =>
-        child instanceof HTMLElement &&
-        child.classList.contains("grid")
-    ) as HTMLElement | undefined
-  ) ?? null;
+  return navigation.querySelector<HTMLElement>(
+    ":scope > .grid"
+  );
 }
 
 function enhanceNavigation(
@@ -102,7 +81,7 @@ function enhanceNavigation(
     button.style.boxShadow =
       "0 2px 8px rgba(15, 23, 42, 0.10)";
     button.style.backdropFilter =
-      "blur(10px)";
+      "none";
   }
 }
 
@@ -273,7 +252,7 @@ export default function MobileNavigationEnhancer() {
       }
       aria-label="Go back"
       title="Back"
-      className="order-first flex min-h-[46px] flex-col items-center justify-center rounded-[0.9rem] border border-white/70 px-2 py-1.5 text-slate-700 shadow-sm backdrop-blur-xl transition active:scale-95"
+      className="order-first flex min-h-[46px] flex-col items-center justify-center rounded-[0.9rem] border border-white/70 px-2 py-1.5 text-slate-700 shadow-sm transition active:scale-95"
       style={{
         backgroundColor:
           "rgba(255, 255, 255, 0.58)",
