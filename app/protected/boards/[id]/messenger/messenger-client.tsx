@@ -195,6 +195,15 @@ const TAB_COLORS: Record<TabColor, string> = {
 
 type JitsiApi = {
   dispose: () => void;
+  executeCommand: (
+    command: string,
+    ...args: unknown[]
+  ) => void;
+  addEventListener: (
+    event: string,
+    listener: (payload: any) => void
+  ) => void;
+  isAudioMuted?: () => Promise<boolean>;
 };
 
 type JitsiConstructor = new (
@@ -394,6 +403,9 @@ export default function MessengerClient({
       null
     );
 
+  const [micMuted, setMicMuted] =
+    useState(true);
+
   const fontPreferenceStyle = {
     "--tb-font-color":
       FONT_COLORS[preferences.font_color],
@@ -534,7 +546,7 @@ export default function MessengerClient({
 
         disposeJitsi();
 
-        jitsiApiRef.current =
+        const api =
           new window.JitsiMeetExternalAPI(
             "8x8.vc",
             {
@@ -548,14 +560,34 @@ export default function MessengerClient({
                 prejoinConfig: {
                   enabled: false,
                 },
-                disableInitialGUM: true,
-                startWithAudioMuted: true,
+                disableInitialGUM: false,
+                startWithAudioMuted: false,
                 startWithVideoMuted: false,
                 disableDeepLinking:
                   true,
               },
             }
           );
+
+        jitsiApiRef.current = api;
+
+        api.addEventListener(
+          "audioMuteStatusChanged",
+          (payload) => {
+            setMicMuted(
+              Boolean(payload?.muted)
+            );
+          }
+        );
+
+        if (api.isAudioMuted) {
+          void api
+            .isAudioMuted()
+            .then((muted) => {
+              setMicMuted(muted);
+            })
+            .catch(() => {});
+        }
       } catch (error) {
         if (!cancelled) {
           setCallError(
@@ -1095,11 +1127,25 @@ export default function MessengerClient({
     setCallOpen(false);
   }
 
+  function toggleCallMicrophone() {
+    const api = jitsiApiRef.current;
+
+    if (!api) {
+      return;
+    }
+
+    api.executeCommand(
+      "toggleAudio"
+    );
+  }
+
   function disposeJitsi() {
     if (jitsiApiRef.current) {
       jitsiApiRef.current.dispose();
       jitsiApiRef.current = null;
     }
+
+    setMicMuted(true);
 
     if (videoContainerRef.current) {
       videoContainerRef.current.innerHTML =
@@ -1415,15 +1461,34 @@ export default function MessengerClient({
                 )}
 
                 {callOpen && (
-                  <button
-                    type="button"
-                    onClick={
-                      closeVideoPanel
-                    }
-                    className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
-                  >
-                    Hide video
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={
+                        toggleCallMicrophone
+                      }
+                      className={`rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${
+                        micMuted
+                          ? "bg-red-600 hover:bg-red-700"
+                          : "bg-green-600 hover:bg-green-700"
+                      }`}
+                      aria-pressed={!micMuted}
+                    >
+                      {micMuted
+                        ? "🎤 Unmute"
+                        : "🔇 Mute"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={
+                        closeVideoPanel
+                      }
+                      className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+                    >
+                      Hide video
+                    </button>
+                  </>
                 )}
 
                 {(activeCall.started_by ===
