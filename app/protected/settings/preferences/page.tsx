@@ -1139,8 +1139,7 @@ export default function PreferencesPage() {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-lg grid-cols-3 gap-1">
-          <button type="button" onClick={() => router.back()} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"><span className="text-lg">←</span><span>Back</span></button>
+        <div className="mx-auto grid max-w-lg grid-cols-2 gap-1">
           <button type="button" onClick={() => router.push("/protected/boards")} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"><span className="text-lg">▦</span><span>Boards</span></button>
           <button type="button" className="flex flex-col items-center rounded-xl bg-slate-900 px-2 py-2 text-xs font-semibold text-white"><span className="text-lg">⚙</span><span>Preferences</span></button>
         </div>

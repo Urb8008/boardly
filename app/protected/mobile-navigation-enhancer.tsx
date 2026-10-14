@@ -40,11 +40,8 @@ function findBottomNavigationGrid() {
       navigation.children
     ).find(
       (child) =>
-        child instanceof
-          HTMLElement &&
-        child.classList.contains(
-          "grid"
-        )
+        child instanceof HTMLElement &&
+        child.classList.contains("grid")
     ) as HTMLElement | undefined
   ) ?? null;
 }
@@ -59,8 +56,7 @@ function enhanceNavigation(
       )
     ).filter(
       (button) =>
-        button.dataset
-          .touchbaseBack !==
+        button.dataset.touchbaseBack !==
         "true"
     );
 
@@ -69,8 +65,7 @@ function enhanceNavigation(
 
   for (const button of buttons) {
     if (
-      button.style
-        .backgroundColor
+      button.style.backgroundColor
     ) {
       continue;
     }
@@ -101,69 +96,146 @@ export default function MobileNavigationEnhancer() {
     );
 
   useEffect(() => {
-    let animationFrame = 0;
+    let cancelled = false;
+    let attempts = 0;
 
-    const refresh = () => {
-      cancelAnimationFrame(
-        animationFrame
-      );
+    const findAndEnhance = () => {
+      if (cancelled) {
+        return;
+      }
 
-      animationFrame =
-        requestAnimationFrame(
-          () => {
-            const grid =
-              findBottomNavigationGrid();
+      const grid =
+        findBottomNavigationGrid();
 
-            if (!grid) {
-              setPortalTarget(
-                null
-              );
-              return;
-            }
+      if (grid) {
+        enhanceNavigation(grid);
+        setPortalTarget(grid);
+        return;
+      }
 
-            enhanceNavigation(
-              grid
-            );
+      attempts += 1;
 
-            setPortalTarget(
-              grid
-            );
-          }
+      if (attempts < 20) {
+        window.setTimeout(
+          findAndEnhance,
+          100
         );
+      } else {
+        setPortalTarget(null);
+      }
     };
 
-    refresh();
+    findAndEnhance();
 
-    const observer =
-      new MutationObserver(
-        refresh
-      );
+    return () => {
+      cancelled = true;
+      setPortalTarget(null);
+    };
+  }, [pathname]);
 
-    observer.observe(
-      document.body,
-      {
-        childList: true,
-        subtree: true,
-      }
+  useEffect(() => {
+    const phoneOnly = window.matchMedia(
+      "(max-width: 767px)"
     );
 
+    if (!phoneOnly.matches) {
+      return;
+    }
+
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+
+    const handleTouchStart = (
+      event: TouchEvent
+    ) => {
+      if (event.touches.length !== 1) {
+        tracking = false;
+        return;
+      }
+
+      const touch = event.touches[0];
+
+      // Only begin a back gesture from the left edge.
+      if (touch.clientX > 32) {
+        tracking = false;
+        return;
+      }
+
+      startX = touch.clientX;
+      startY = touch.clientY;
+      tracking = true;
+    };
+
+    const handleTouchEnd = (
+      event: TouchEvent
+    ) => {
+      if (!tracking) {
+        return;
+      }
+
+      tracking = false;
+
+      const touch =
+        event.changedTouches[0];
+
+      if (!touch) {
+        return;
+      }
+
+      const deltaX =
+        touch.clientX - startX;
+      const deltaY =
+        Math.abs(
+          touch.clientY - startY
+        );
+
+      // Require a clear horizontal right swipe so normal scrolling
+      // and controls do not accidentally navigate back.
+      if (
+        deltaX >= 90 &&
+        deltaY <= 70 &&
+        deltaX > deltaY * 1.5
+      ) {
+        router.back();
+      }
+    };
+
+    const handleTouchCancel = () => {
+      tracking = false;
+    };
+
     window.addEventListener(
-      "resize",
-      refresh
+      "touchstart",
+      handleTouchStart,
+      { passive: true }
+    );
+    window.addEventListener(
+      "touchend",
+      handleTouchEnd,
+      { passive: true }
+    );
+    window.addEventListener(
+      "touchcancel",
+      handleTouchCancel,
+      { passive: true }
     );
 
     return () => {
-      cancelAnimationFrame(
-        animationFrame
-      );
-      observer.disconnect();
-
       window.removeEventListener(
-        "resize",
-        refresh
+        "touchstart",
+        handleTouchStart
+      );
+      window.removeEventListener(
+        "touchend",
+        handleTouchEnd
+      );
+      window.removeEventListener(
+        "touchcancel",
+        handleTouchCancel
       );
     };
-  }, [pathname]);
+  }, [pathname, router]);
 
   if (!portalTarget) {
     return null;
