@@ -333,10 +333,12 @@ function NativeDraggableCardShell({
       }
       style={{
         touchAction:
-          "manipulation",
+          "none",
         WebkitUserSelect:
           "none",
         userSelect:
+          "none",
+        WebkitTouchCallout:
           "none",
         opacity:
           isDragging
@@ -455,8 +457,7 @@ export default function BoardClient({
         TouchSensor,
         {
           activationConstraint: {
-            delay: 250,
-            tolerance: 8,
+            distance: 6,
           },
         }
       )
@@ -3809,7 +3810,7 @@ export default function BoardClient({
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-slate-400">
             {native
-              ? "Hold to drag · Tap to edit"
+              ? "Drag to move · Tap to edit"
               : "Drag to move · Click to edit"}
           </span>
 
