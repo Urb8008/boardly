@@ -48,10 +48,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const appId = process.env.JAAS_APP_ID;
-    const keyId = process.env.JAAS_KEY_ID;
+    const appId =
+      process.env.JAAS_APP_ID?.trim();
+
+    const keyId =
+      process.env.JAAS_KEY_ID?.trim();
+
     const privateKeyBase64 =
-      process.env.JAAS_PRIVATE_KEY_BASE64;
+      process.env.JAAS_PRIVATE_KEY_BASE64?.trim();
 
     if (!appId || !keyId || !privateKeyBase64) {
       console.error("Missing JaaS environment variables.");
@@ -77,6 +81,13 @@ const privateKey = await importPKCS8(
 
     const now = Math.floor(Date.now() / 1000);
 
+    // JaaS expects kid in the form:
+    // <AppID>/<API_KEY_ID>
+    const fullKeyId =
+      keyId.includes("/")
+        ? keyId
+        : `${appId}/${keyId}`;
+
     const displayName =
       (typeof user.user_metadata?.full_name === "string" &&
         user.user_metadata.full_name.trim()) ||
@@ -95,7 +106,7 @@ const privateKey = await importPKCS8(
           id: user.id,
           name: displayName,
           email: user.email ?? "",
-          moderator: true,
+          moderator: "true",
         },
         features: {
           livestreaming: false,
@@ -110,9 +121,10 @@ const privateKey = await importPKCS8(
     })
       .setProtectedHeader({
         alg: "RS256",
-        kid: keyId,
+        kid: fullKeyId,
         typ: "JWT",
       })
+      .setIssuedAt(now)
       .setNotBefore(now - 10)
       .setExpirationTime(now + 60 * 60 * 2)
       .sign(privateKey);
