@@ -4,6 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Capacitor } from "@capacitor/core";
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { WALLPAPER_OPTIONS } from "@/lib/preferences/options";
 
 type Board = {
@@ -292,6 +305,91 @@ type ModalChecklistItem = {
   position: number;
 };
 
+
+function NativeDraggableCardShell({
+  cardId,
+  children,
+}: {
+  cardId: number;
+  children: React.ReactNode;
+}) {
+  const {
+    listeners,
+    setNodeRef,
+    isDragging,
+  } = useDraggable({
+    id: `card-${cardId}`,
+    data: {
+      cardId,
+    },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      onContextMenu={(event) =>
+        event.preventDefault()
+      }
+      style={{
+        touchAction:
+          "manipulation",
+        WebkitUserSelect:
+          "none",
+        userSelect:
+          "none",
+        opacity:
+          isDragging
+            ? 0.12
+            : 1,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function NativeDroppableColumnShell({
+  status,
+  accentColor,
+  className,
+  style,
+  children,
+}: {
+  status: CardStatus;
+  accentColor: string;
+  className: string;
+  style: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  const {
+    setNodeRef,
+    isOver,
+  } = useDroppable({
+    id: status,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={className}
+      style={{
+        ...style,
+        outline:
+          isOver
+            ? `3px solid ${accentColor}`
+            : undefined,
+        outlineOffset:
+          isOver
+            ? "2px"
+            : undefined,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function BoardClient({
   boardId,
 }: {
@@ -323,22 +421,46 @@ export default function BoardClient({
   const [cards, setCards] =
     useState<Card[]>([]);
 
-  const isNativeAndroid =
-    Capacitor.isNativePlatform() &&
-    Capacitor.getPlatform() === "android";
+  const [
+    isNativeAndroid,
+    setIsNativeAndroid,
+  ] = useState(false);
 
   const [
-    nativeDraggingCardId,
-    setNativeDraggingCardId,
-  ] = useState<number | null>(null);
+    activeNativeCardId,
+    setActiveNativeCardId,
+  ] = useState<number | null>(
+    null
+  );
 
-  const [
-    nativeDragOverStatus,
-    setNativeDragOverStatus,
-  ] = useState<CardStatus | null>(null);
-
-  const suppressCardClickRef =
+  const nativeDragJustEndedRef =
     useRef(false);
+
+  const nativeDragResetTimerRef =
+    useRef<ReturnType<
+      typeof setTimeout
+    > | null>(null);
+
+  const nativeDndSensors =
+    useSensors(
+      useSensor(
+        MouseSensor,
+        {
+          activationConstraint: {
+            distance: 6,
+          },
+        }
+      ),
+      useSensor(
+        TouchSensor,
+        {
+          activationConstraint: {
+            delay: 250,
+            tolerance: 8,
+          },
+        }
+      )
+    );
 
   const [
     checklistItems,
@@ -627,6 +749,24 @@ export default function BoardClient({
         ) / 100
       ),
   } as React.CSSProperties;
+
+  useEffect(() => {
+    setIsNativeAndroid(
+      Capacitor.isNativePlatform() &&
+        Capacitor.getPlatform() ===
+          "android"
+    );
+
+    return () => {
+      if (
+        nativeDragResetTimerRef.current
+      ) {
+        clearTimeout(
+          nativeDragResetTimerRef.current
+        );
+      }
+    };
+  }, []);
 
   useEffect(() => {
     initializeBoard();
@@ -3121,368 +3261,107 @@ export default function BoardClient({
     event.preventDefault();
   }
 
-  function getNativeDropStatus(
-    x: number,
-    y: number
+  function handleNativeDragStart(
+    event: DragStartEvent
   ) {
-    const element =
-      document.elementFromPoint(
-        x,
-        y
-      ) as HTMLElement | null;
-
-    const column =
-      element?.closest<HTMLElement>(
-        "[data-card-status]"
+    const cardId =
+      Number(
+        event.active.data.current
+          ?.cardId
       );
 
-    const status =
-      column?.dataset
-        .cardStatus as
+    if (!cardId) {
+      return;
+    }
+
+    setActiveNativeCardId(
+      cardId
+    );
+  }
+
+  function finishNativeDragClickGuard() {
+    nativeDragJustEndedRef.current =
+      true;
+
+    if (
+      nativeDragResetTimerRef.current
+    ) {
+      clearTimeout(
+        nativeDragResetTimerRef.current
+      );
+    }
+
+    nativeDragResetTimerRef.current =
+      setTimeout(() => {
+        nativeDragJustEndedRef.current =
+          false;
+
+        nativeDragResetTimerRef.current =
+          null;
+      }, 250);
+  }
+
+  function handleNativeDragEnd(
+    event: DragEndEvent
+  ) {
+    const cardId =
+      Number(
+        event.active.data.current
+          ?.cardId
+      );
+
+    const newStatus =
+      event.over?.id as
         | CardStatus
         | undefined;
 
-    if (
-      status === "todo" ||
-      status === "in_progress" ||
-      status === "done"
-    ) {
-      return status;
-    }
+    setActiveNativeCardId(
+      null
+    );
 
-    return null;
-  }
+    finishNativeDragClickGuard();
 
-  function handleNativeCardTouchStart(
-    event:
-      React.TouchEvent<HTMLDivElement>,
-    card: Card
-  ) {
     if (
-      !isNativeAndroid ||
-      event.touches.length !== 1
+      !cardId ||
+      !newStatus ||
+      ![
+        "todo",
+        "in_progress",
+        "done",
+      ].includes(
+        newStatus
+      )
     ) {
       return;
     }
 
-    const cardElement =
-      event.currentTarget;
-
-    const startTouch =
-      event.touches[0];
-
-    const startX =
-      startTouch.clientX;
-
-    const startY =
-      startTouch.clientY;
-
-    const startScrollY =
-      window.scrollY;
-
-    let lastX = startX;
-    let lastY = startY;
-    let active = false;
-    let finished = false;
-    let autoScrollFrame:
-      number | null = null;
-
-    const resetCardVisual = () => {
-      cardElement.style.transform =
-        "";
-
-      cardElement.style.zIndex =
-        "";
-
-      cardElement.style.position =
-        "";
-
-      cardElement.style.pointerEvents =
-        "";
-
-      cardElement.style.boxShadow =
-        "";
-
-      cardElement.style.transition =
-        "";
-    };
-
-    const updateCardVisual = () => {
-      if (!active) {
-        return;
-      }
-
-      const deltaX =
-        lastX - startX;
-
-      const deltaY =
-        lastY -
-        startY +
-        (window.scrollY -
-          startScrollY);
-
-      cardElement.style.transform =
-        `translate(${deltaX}px, ${deltaY}px) scale(1.02)`;
-    };
-
-    const getTargetStatus = () => {
-      const status =
-        getNativeDropStatus(
-          lastX,
-          lastY
-        );
-
-      return status &&
-        status !== card.status
-        ? status
-        : null;
-    };
-
-    const stopAutoScroll = () => {
-      if (
-        autoScrollFrame !== null
-      ) {
-        cancelAnimationFrame(
-          autoScrollFrame
-        );
-
-        autoScrollFrame =
-          null;
-      }
-    };
-
-    const cleanup = () => {
-      if (finished) {
-        return;
-      }
-
-      finished = true;
-
-      clearTimeout(holdTimer);
-      stopAutoScroll();
-      resetCardVisual();
-
-      document.removeEventListener(
-        "touchmove",
-        onTouchMove
+    const movedCard =
+      cards.find(
+        (card) =>
+          card.id ===
+          cardId
       );
 
-      document.removeEventListener(
-        "touchend",
-        onTouchEnd
-      );
+    if (
+      !movedCard ||
+      movedCard.status ===
+        newStatus
+    ) {
+      return;
+    }
 
-      document.removeEventListener(
-        "touchcancel",
-        onTouchEnd
-      );
+    void moveCard(
+      cardId,
+      newStatus
+    );
+  }
 
-      setNativeDraggingCardId(
-        null
-      );
-
-      setNativeDragOverStatus(
-        null
-      );
-    };
-
-    const runAutoScroll = () => {
-      if (
-        !active ||
-        finished
-      ) {
-        autoScrollFrame =
-          null;
-
-        return;
-      }
-
-      let amount = 0;
-
-      if (lastY < 125) {
-        amount = -16;
-      } else if (
-        lastY >
-        window.innerHeight - 155
-      ) {
-        amount = 16;
-      }
-
-      if (amount !== 0) {
-        window.scrollBy(
-          0,
-          amount
-        );
-
-        updateCardVisual();
-
-        setNativeDragOverStatus(
-          getTargetStatus()
-        );
-      }
-
-      autoScrollFrame =
-        requestAnimationFrame(
-          runAutoScroll
-        );
-    };
-
-    const activateDrag = () => {
-      if (
-        finished ||
-        active
-      ) {
-        return;
-      }
-
-      active = true;
-
-      suppressCardClickRef.current =
-        true;
-
-      setNativeDraggingCardId(
-        card.id
-      );
-
-      // Do NOT highlight the current/source column.
-      setNativeDragOverStatus(
-        null
-      );
-
-      cardElement.style.position =
-        "relative";
-
-      cardElement.style.zIndex =
-        "60";
-
-      cardElement.style.pointerEvents =
-        "none";
-
-      cardElement.style.transition =
-        "none";
-
-      cardElement.style.boxShadow =
-        "0 18px 45px rgba(15, 23, 42, 0.32)";
-
-      updateCardVisual();
-
-      autoScrollFrame =
-        requestAnimationFrame(
-          runAutoScroll
-        );
-    };
-
-    const onTouchMove = (
-      moveEvent: TouchEvent
-    ) => {
-      if (
-        moveEvent.touches.length !== 1 ||
-        finished
-      ) {
-        return;
-      }
-
-      const touch =
-        moveEvent.touches[0];
-
-      lastX = touch.clientX;
-      lastY = touch.clientY;
-
-      if (!active) {
-        const distance =
-          Math.hypot(
-            lastX - startX,
-            lastY - startY
-          );
-
-        if (distance > 12) {
-          cleanup();
-        }
-
-        return;
-      }
-
-      moveEvent.preventDefault();
-
-      updateCardVisual();
-
-      setNativeDragOverStatus(
-        getTargetStatus()
-      );
-    };
-
-    const onTouchEnd = (
-      endEvent: TouchEvent
-    ) => {
-      if (finished) {
-        return;
-      }
-
-      if (!active) {
-        cleanup();
-        return;
-      }
-
-      endEvent.preventDefault();
-
-      const endTouch =
-        endEvent.changedTouches[0];
-
-      if (endTouch) {
-        lastX = endTouch.clientX;
-        lastY = endTouch.clientY;
-      }
-
-      const status =
-        getTargetStatus();
-
-      if (status) {
-        void moveCard(
-          card.id,
-          status
-        );
-      }
-
-      cleanup();
-
-      window.setTimeout(
-        () => {
-          suppressCardClickRef.current =
-            false;
-        },
-        250
-      );
-    };
-
-    document.addEventListener(
-      "touchmove",
-      onTouchMove,
-      {
-        passive: false,
-      }
+  function handleNativeDragCancel() {
+    setActiveNativeCardId(
+      null
     );
 
-    document.addEventListener(
-      "touchend",
-      onTouchEnd,
-      {
-        passive: false,
-      }
-    );
-
-    document.addEventListener(
-      "touchcancel",
-      onTouchEnd,
-      {
-        passive: false,
-      }
-    );
-
-    const holdTimer =
-      window.setTimeout(
-        activateDrag,
-        320
-      );
+    finishNativeDragClickGuard();
   }
 
   // -----------------------------------
@@ -3729,7 +3608,9 @@ export default function BoardClient({
   // -----------------------------------
 
   function renderCard(
-    card: Card
+    card: Card,
+    native = false,
+    overlay = false
   ) {
     const overdue =
       isOverdue(card);
@@ -3749,18 +3630,18 @@ export default function BoardClient({
         card.priority
       );
 
-    return (
+    const cardElement = (
       <div
         key={card.id}
         draggable={
-          !isNativeAndroid
+          !native
         }
         role="button"
         tabIndex={0}
         onClick={(event) => {
           if (
-            isNativeAndroid &&
-            suppressCardClickRef.current
+            native &&
+            nativeDragJustEndedRef.current
           ) {
             return;
           }
@@ -3802,40 +3683,42 @@ export default function BoardClient({
             );
           }
         }}
-        onDragStart={(event) =>
-          handleDragStart(
-            event,
-            card.id
-          )
-        }
-        onTouchStart={
-          isNativeAndroid
-            ? (event) =>
-                handleNativeCardTouchStart(
+        onDragStart={
+          native
+            ? undefined
+            : (event) =>
+                handleDragStart(
                   event,
-                  card
+                  card.id
                 )
-            : undefined
         }
         onContextMenu={(event) => {
-          if (isNativeAndroid) {
+          if (native) {
             event.preventDefault();
           }
         }}
         className="group cursor-pointer rounded-xl border p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:scale-[1.02] hover:brightness-110 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
         style={{
-          WebkitUserSelect:
-            isNativeAndroid
-              ? "none"
-              : undefined,
-          userSelect:
-            isNativeAndroid
-              ? "none"
-              : undefined,
           background:
             priorityCardStyle.background,
           borderColor:
             priorityCardStyle.borderColor,
+          WebkitUserSelect:
+            native
+              ? "none"
+              : undefined,
+          userSelect:
+            native
+              ? "none"
+              : undefined,
+          pointerEvents:
+            overlay
+              ? "none"
+              : undefined,
+          boxShadow:
+            overlay
+              ? "0 18px 45px rgba(15, 23, 42, 0.30)"
+              : undefined,
         }}
       >
         <div className="flex items-start justify-between gap-3">
@@ -3925,8 +3808,8 @@ export default function BoardClient({
 
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-slate-400">
-            {isNativeAndroid
-              ? "Hold card, then drag to another section"
+            {native
+              ? "Hold to drag · Tap to edit"
               : "Drag to move · Click to edit"}
           </span>
 
@@ -3945,6 +3828,26 @@ export default function BoardClient({
         </div>
       </div>
     );
+
+    if (
+      native &&
+      !overlay
+    ) {
+      return (
+        <NativeDraggableCardShell
+          key={card.id}
+          cardId={
+            card.id
+          }
+        >
+          {
+            cardElement
+          }
+        </NativeDraggableCardShell>
+      );
+    }
+
+    return cardElement;
   }
 
   const todoCards =
@@ -3972,41 +3875,15 @@ export default function BoardClient({
     title,
     status,
     cardsForColumn,
+    native = false,
   }: {
     title: string;
     status: CardStatus;
     cardsForColumn: Card[];
+    native?: boolean;
   }) {
-    return (
-      <div
-        data-card-status={
-          status
-        }
-        onDragOver={allowDrop}
-        onDrop={(event) =>
-          handleDrop(
-            event,
-            status
-          )
-        }
-        className="flex min-h-[420px] w-full flex-col rounded-2xl border border-white/50 p-4 shadow-lg backdrop-blur-md md:w-80 md:flex-none"
-        style={{
-          backgroundColor:
-            panelBackgroundColor,
-          outline:
-            isNativeAndroid &&
-            nativeDragOverStatus ===
-              status
-              ? `3px solid ${accentColor}`
-              : undefined,
-          outlineOffset:
-            isNativeAndroid &&
-            nativeDragOverStatus ===
-              status
-              ? "2px"
-              : undefined,
-        }}
-      >
+    const columnContents = (
+      <>
         <div
           className="flex items-center justify-between rounded-xl px-3 py-3 text-white"
           style={{
@@ -4045,7 +3922,11 @@ export default function BoardClient({
 
         <div className="mt-4 flex flex-col gap-3">
           {cardsForColumn.map(
-            renderCard
+            (card) =>
+              renderCard(
+                card,
+                native
+              )
           )}
 
           {cardsForColumn.length ===
@@ -4067,6 +3948,61 @@ export default function BoardClient({
         >
           + Add a card
         </button>
+      </>
+    );
+
+    const columnClassName =
+      "flex min-h-[420px] w-full flex-col rounded-2xl border border-white/50 p-4 shadow-lg backdrop-blur-md md:w-80 md:flex-none";
+
+    const columnStyle = {
+      backgroundColor:
+        panelBackgroundColor,
+    };
+
+    if (native) {
+      return (
+        <NativeDroppableColumnShell
+          status={
+            status
+          }
+          accentColor={
+            accentColor
+          }
+          className={
+            columnClassName
+          }
+          style={
+            columnStyle
+          }
+        >
+          {
+            columnContents
+          }
+        </NativeDroppableColumnShell>
+      );
+    }
+
+    return (
+      <div
+        onDragOver={
+          allowDrop
+        }
+        onDrop={(event) =>
+          handleDrop(
+            event,
+            status
+          )
+        }
+        className={
+          columnClassName
+        }
+        style={
+          columnStyle
+        }
+      >
+        {
+          columnContents
+        }
       </div>
     );
   }
@@ -4600,31 +4536,110 @@ export default function BoardClient({
               </div>
             </div>
 
-            <div className="mt-6 grid gap-4 pb-4 md:mt-8 md:flex md:gap-6 md:overflow-x-auto md:pb-8">
-              <BoardColumn
-                title="To Do"
-                status="todo"
-                cardsForColumn={
-                  todoCards
+            {isNativeAndroid ? (
+              <DndContext
+                sensors={
+                  nativeDndSensors
                 }
-              />
+                collisionDetection={
+                  closestCenter
+                }
+                autoScroll
+                onDragStart={
+                  handleNativeDragStart
+                }
+                onDragEnd={
+                  handleNativeDragEnd
+                }
+                onDragCancel={
+                  handleNativeDragCancel
+                }
+              >
+                <div className="mt-6 grid gap-4 pb-4 md:mt-8 md:flex md:gap-6 md:overflow-x-auto md:pb-8">
+                  <BoardColumn
+                    title="To Do"
+                    status="todo"
+                    cardsForColumn={
+                      todoCards
+                    }
+                    native
+                  />
 
-              <BoardColumn
-                title="In Progress"
-                status="in_progress"
-                cardsForColumn={
-                  progressCards
-                }
-              />
+                  <BoardColumn
+                    title="In Progress"
+                    status="in_progress"
+                    cardsForColumn={
+                      progressCards
+                    }
+                    native
+                  />
 
-              <BoardColumn
-                title="Done"
-                status="done"
-                cardsForColumn={
-                  doneCards
-                }
-              />
-            </div>
+                  <BoardColumn
+                    title="Done"
+                    status="done"
+                    cardsForColumn={
+                      doneCards
+                    }
+                    native
+                  />
+                </div>
+
+                <DragOverlay
+                  dropAnimation={
+                    null
+                  }
+                >
+                  {(() => {
+                    if (
+                      !activeNativeCardId
+                    ) {
+                      return null;
+                    }
+
+                    const activeCard =
+                      cards.find(
+                        (card) =>
+                          card.id ===
+                          activeNativeCardId
+                      );
+
+                    return activeCard
+                      ? renderCard(
+                          activeCard,
+                          true,
+                          true
+                        )
+                      : null;
+                  })()}
+                </DragOverlay>
+              </DndContext>
+            ) : (
+              <div className="mt-6 grid gap-4 pb-4 md:mt-8 md:flex md:gap-6 md:overflow-x-auto md:pb-8">
+                <BoardColumn
+                  title="To Do"
+                  status="todo"
+                  cardsForColumn={
+                    todoCards
+                  }
+                />
+
+                <BoardColumn
+                  title="In Progress"
+                  status="in_progress"
+                  cardsForColumn={
+                    progressCards
+                  }
+                />
+
+                <BoardColumn
+                  title="Done"
+                  status="done"
+                  cardsForColumn={
+                    doneCards
+                  }
+                />
+              </div>
+            )}
           </div>
         </div>
       </main>
