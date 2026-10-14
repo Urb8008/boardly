@@ -324,6 +324,9 @@ export default function BoardsPage() {
     Record<number, BoardStats>
   >({});
 
+  const [unreadBoardCounts, setUnreadBoardCounts] =
+    useState<Record<number, number>>({});
+
   const [boardLinks, setBoardLinks] = useState<
     Record<number, BoardLink[]>
   >({});
@@ -433,6 +436,78 @@ export default function BoardsPage() {
     initializeDashboard();
   }, []);
 
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    void loadUnreadBoardCounts();
+
+    const refreshUnread = () => {
+      void loadUnreadBoardCounts();
+    };
+
+    const messageChannel = supabase
+      .channel(`boards-unread-messages-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "board_messages",
+        },
+        refreshUnread
+      )
+      .subscribe();
+
+    const notificationChannel = supabase
+      .channel(`boards-unread-activity-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        refreshUnread
+      )
+      .subscribe();
+
+    const messageReadsChannel = supabase
+      .channel(`boards-message-reads-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "board_message_reads",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        refreshUnread
+      )
+      .subscribe();
+
+    const activityReadsChannel = supabase
+      .channel(`boards-activity-reads-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "board_activity_reads",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        refreshUnread
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(messageChannel);
+      void supabase.removeChannel(notificationChannel);
+      void supabase.removeChannel(messageReadsChannel);
+      void supabase.removeChannel(activityReadsChannel);
+    };
+  }, [currentUserId]);
+
   async function initializeDashboard() {
     setLoading(true);
 
@@ -451,7 +526,38 @@ export default function BoardsPage() {
       loadPreferences(user.id),
     ]);
 
+    await loadUnreadBoardCounts();
+
     setLoading(false);
+  }
+
+  async function loadUnreadBoardCounts() {
+    const { data, error } =
+      await supabase.rpc(
+        "get_board_badge_counts"
+      );
+
+    if (error) {
+      console.error(
+        "Error loading board unread counts:",
+        error.message
+      );
+      return;
+    }
+
+    const counts: Record<number, number> = {};
+
+    (data || []).forEach(
+      (row: {
+        board_id: number;
+        total_count: number;
+      }) => {
+        counts[Number(row.board_id)] =
+          Number(row.total_count) || 0;
+      }
+    );
+
+    setUnreadBoardCounts(counts);
   }
 
   async function getCurrentUser() {
@@ -1145,7 +1251,29 @@ export default function BoardsPage() {
     }
   }
 
-  function openBoard(boardId: number) {
+  async function openBoard(boardId: number) {
+    setUnreadBoardCounts((current) => ({
+      ...current,
+      [boardId]: Math.max(
+        0,
+        current[boardId] || 0
+      ),
+    }));
+
+    const { error } = await supabase.rpc(
+      "mark_board_activity_read",
+      {
+        target_board_id: boardId,
+      }
+    );
+
+    if (error) {
+      console.error(
+        "Error marking board activity read:",
+        error.message
+      );
+    }
+
     router.push(
       `/protected/boards/${boardId}`
     );
@@ -1346,6 +1474,11 @@ export default function BoardsPage() {
                     board.user_id ===
                     currentUserId;
 
+                  const unreadCount =
+                    unreadBoardCounts[
+                      board.id
+                    ] || 0;
+
                   return (
                     <div
                       key={board.id}
@@ -1381,9 +1514,23 @@ export default function BoardsPage() {
                         className="w-full cursor-pointer p-4 text-left sm:p-6"
                       >
                         <div className="flex items-center justify-between gap-3 sm:items-start sm:gap-4">
-                          <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
-                            {board.name}
-                          </h2>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <h2 className="truncate text-lg font-bold text-slate-900 sm:text-xl">
+                              {board.name}
+                            </h2>
+
+                            {unreadCount > 0 && (
+                              <span
+                                className="inline-flex min-w-6 shrink-0 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-md ring-2 ring-white/80"
+                                aria-label={`${unreadCount} new items`}
+                                title={`${unreadCount} new messages or board activities`}
+                              >
+                                {unreadCount > 99
+                                  ? "99+"
+                                  : unreadCount}
+                              </span>
+                            )}
+                          </div>
 
                           <div className="relative flex shrink-0 items-center gap-2">
                             <div className="group/count relative">

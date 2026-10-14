@@ -687,6 +687,22 @@ export default function MessengerClient({
     }
   }
 
+  async function markMessagesRead() {
+    const { error } = await supabase.rpc(
+      "mark_board_messages_read",
+      {
+        target_board_id: boardId,
+      }
+    );
+
+    if (error) {
+      console.error(
+        "Error marking messages read:",
+        error.message
+      );
+    }
+  }
+
   async function loadMessages() {
     const {
       data,
@@ -721,6 +737,8 @@ export default function MessengerClient({
     setMessages(
       data || []
     );
+
+    await markMessagesRead();
   }
 
   async function sendMessage() {
