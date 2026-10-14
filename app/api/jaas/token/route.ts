@@ -54,10 +54,10 @@ export async function POST(request: NextRequest) {
     const keyId =
       process.env.JAAS_KEY_ID?.trim();
 
-    const privateKeyBase64 =
+    const privateKeyValue =
       process.env.JAAS_PRIVATE_KEY_BASE64?.trim();
 
-    if (!appId || !keyId || !privateKeyBase64) {
+    if (!appId || !keyId || !privateKeyValue) {
       console.error("Missing JaaS environment variables.");
 
       return NextResponse.json(
@@ -66,18 +66,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-   const privateKeyPem = Buffer.from(
-  privateKeyBase64.trim(),
-  "base64"
-)
-  .toString("utf8")
-  .replace(/^\uFEFF/, "")
-  .trim();
+    const privateKeyPem =
+      privateKeyValue.includes("-----BEGIN PRIVATE KEY-----")
+        ? privateKeyValue
+            .replace(/\\n/g, "\n")
+            .replace(/^"|"$/g, "")
+            .trim()
+        : Buffer.from(
+            privateKeyValue.replace(/\s+/g, ""),
+            "base64"
+          )
+            .toString("utf8")
+            .replace(/^\uFEFF/, "")
+            .trim();
 
-const privateKey = await importPKCS8(
-  privateKeyPem,
-  "RS256"
-);
+    if (
+      !privateKeyPem.includes("-----BEGIN PRIVATE KEY-----") ||
+      !privateKeyPem.includes("-----END PRIVATE KEY-----")
+    ) {
+      console.error("Invalid JaaS private key format.");
+      return NextResponse.json(
+        { error: "Invalid JaaS private key configuration." },
+        { status: 500 }
+      );
+    }
+
+    const privateKey = await importPKCS8(
+      privateKeyPem,
+      "RS256"
+    );
 
     const now = Math.floor(Date.now() / 1000);
 
