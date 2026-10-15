@@ -1687,7 +1687,7 @@ export default function BoardsPage() {
                             </button>
 
                             <div
-                              className={`absolute bottom-full right-0 z-[100] mb-2 min-w-max rounded-2xl border border-white/70 bg-white/95 p-2 text-left shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/menu:pointer-events-auto group-hover/menu:visible group-hover/menu:translate-y-0 group-hover/menu:opacity-100 ${
+                              className={`absolute bottom-full right-0 z-[100] mb-2 min-w-max rounded-2xl border border-white/70 bg-white/95 p-2 text-left shadow-xl backdrop-blur-xl transition-all duration-150 md:group-hover/menu:pointer-events-auto md:group-hover/menu:visible md:group-hover/menu:translate-y-0 md:group-hover/menu:opacity-100 ${
                                 openBoardMenuId === board.id
                                   ? "visible translate-y-0 opacity-100"
                                   : "pointer-events-none invisible translate-y-1 opacity-0"
@@ -1749,7 +1749,7 @@ export default function BoardsPage() {
                                     </button>
 
                                     <div
-                                      className={`absolute right-full top-0 z-[120] mr-2 w-52 rounded-2xl border border-white/70 bg-white/95 p-3 shadow-xl backdrop-blur-xl transition-all duration-150 group-hover/preferences:pointer-events-auto group-hover/preferences:visible group-hover/preferences:translate-x-0 group-hover/preferences:opacity-100 ${
+                                      className={`absolute right-full top-0 z-[120] mr-2 w-52 rounded-2xl border border-white/70 bg-white/95 p-3 shadow-xl backdrop-blur-xl transition-all duration-150 md:group-hover/preferences:pointer-events-auto md:group-hover/preferences:visible md:group-hover/preferences:translate-x-0 md:group-hover/preferences:opacity-100 ${
                                         openBoardPreferencesId === board.id
                                           ? "visible translate-x-0 opacity-100"
                                           : "pointer-events-none invisible translate-x-1 opacity-0"
