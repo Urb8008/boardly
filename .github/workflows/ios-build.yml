@@ -40,10 +40,6 @@ jobs:
           fi
           npx cap sync ios
 
-      - name: Install CocoaPods dependencies
-        working-directory: ios/App
-        run: pod install
-
       - name: Build iOS app without signing
         working-directory: ios/App
         run: |
