@@ -4186,10 +4186,15 @@ export default function BoardClient({
                     `/protected/boards/${boardId}/messenger`
                   )
                 }
-                className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
+                className="relative rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
                 style={{ backgroundColor: accentColor }}
               >
                 Messenger
+                {unreadChatCount > 0 && (
+                  <span className="absolute -right-2 -top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow">
+                    {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                  </span>
+                )}
               </button>
 
               <button
