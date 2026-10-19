@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: "www",
 
   server: {
-    url: "https://app.urbanenglish.es",
+    url: "https://touchbase.urbanenglish.es",
     cleartext: false,
   },
 };
