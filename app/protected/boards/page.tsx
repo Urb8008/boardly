@@ -1374,17 +1374,27 @@ export default function BoardsPage() {
 
         <div className="hidden border-b border-white/30 bg-white/90 shadow-sm backdrop-blur md:block">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 sm:px-8">
-            <button
-              type="button"
-              onClick={() =>
-                router.push(
-                  "/protected/boards"
-                )
-              }
-              className="text-lg font-bold text-slate-900"
-            >
-              TouchBase
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => router.push("/protected/boards")}
+                className="text-lg font-bold text-slate-900"
+              >
+                TouchBase
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/protected/settings/account")}
+                aria-label="Account settings"
+                title="Account settings"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-700 transition hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                  <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
+                  <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.86 1.86-.06-.06A1.7 1.7 0 0 0 16 18.4a1.7 1.7 0 0 0-1 1.56V21H9v-1.04a1.7 1.7 0 0 0-1-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.86-1.86.06-.06A1.7 1.7 0 0 0 4.6 15 1.7 1.7 0 0 0 3.04 14H2v-4h1.04A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88L4.2 7.06 6.06 5.2l.06.06A1.7 1.7 0 0 0 8 5.6a1.7 1.7 0 0 0 1-1.56V3h6v1.04a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.86 1.86-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1H22v4h-1.04A1.7 1.7 0 0 0 19.4 15Z" />
+                </svg>
+              </button>
+            </div>
 
             <div className="flex items-center gap-3">
               <div className="hidden text-right md:block">
