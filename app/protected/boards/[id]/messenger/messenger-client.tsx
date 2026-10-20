@@ -760,9 +760,34 @@ export default function MessengerClient({
       return;
     }
 
-    setMessages(
-      data || []
-    );
+    // Personal deletions are stored per user and never delete shared messages.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const allMessages = (data || []) as BoardMessage[];
+    const hiddenIds = new Set<number>();
+    const ids = allMessages.map((message) => message.id);
+
+    // Small batches avoid oversized URL filters on busy boards.
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: hiddenRows, error: hiddenError } = await supabase
+        .from("board_message_hidden")
+        .select("message_id")
+        .eq("user_id", user.id)
+        .in("message_id", ids.slice(i, i + 200));
+
+      if (hiddenError) {
+        console.error("Error loading hidden messages:", hiddenError.message);
+        return;
+      }
+
+      (hiddenRows || []).forEach((row) => hiddenIds.add(Number(row.message_id)));
+    }
+
+    setMessages(allMessages.filter((message) => !hiddenIds.has(message.id)));
+    setSelectedMessageIds((current) => current.filter((id) =>
+      allMessages.some((message) => message.id === id && !hiddenIds.has(id))
+    ));
 
     await markMessagesRead();
   }
@@ -912,96 +937,82 @@ export default function MessengerClient({
     setSelectedMessageIds([]);
   }
 
-  async function deleteSelectedMessages() {
-    if (
-      selectedMessageIds.length ===
-      0
-    ) {
-      return;
-    }
+  async function hideMessagesForMe(messageIds: number[]) {
+    if (!currentUserId || messageIds.length === 0) return false;
 
-    const confirmed =
-      window.confirm(
-        `Delete ${selectedMessageIds.length} selected message${selectedMessageIds.length === 1 ? "" : "s"}?`
-      );
+    // Unique (message_id, user_id) ensures retries are harmless.
+    for (let i = 0; i < messageIds.length; i += 100) {
+      const { error } = await supabase
+        .from("board_message_hidden")
+        .upsert(
+          messageIds.slice(i, i + 100).map((message_id) => ({
+            message_id,
+            user_id: currentUserId,
+          })),
+          { onConflict: "message_id,user_id", ignoreDuplicates: true }
+        );
 
-    if (!confirmed) {
-      return;
-    }
-
-    setDeletingMessages(true);
-
-    const {
-      error,
-    } =
-      await supabase.rpc(
-        "delete_selected_board_messages",
-        {
-          target_board_id:
-            boardId,
-          target_message_ids:
-            selectedMessageIds,
-        }
-      );
-
-    setDeletingMessages(false);
-
-    if (error) {
-      alert(
-        `Error deleting messages: ${error.message}`
-      );
-
-      return;
+      if (error) {
+        alert(`Error hiding messages: ${error.message}`);
+        await loadMessages();
+        return false;
+      }
     }
 
     cancelMessageSelection();
-
     await loadMessages();
+    return true;
+  }
+
+  async function deleteSelectedMessages() {
+    if (selectedMessageIds.length === 0) return;
+    if (!window.confirm(
+      `Hide ${selectedMessageIds.length} selected message${selectedMessageIds.length === 1 ? "" : "s"} for you only?`
+    )) return;
+
+    setDeletingMessages(true);
+    try {
+      await hideMessagesForMe(selectedMessageIds);
+    } finally {
+      setDeletingMessages(false);
+    }
+  }
+
+  async function deleteSelectedMessagesForEveryone() {
+    if (board?.user_id !== currentUserId || selectedMessageIds.length === 0) return;
+    if (!window.confirm(
+      `Permanently delete ${selectedMessageIds.length} selected message${selectedMessageIds.length === 1 ? "" : "s"} for EVERYONE? This cannot be undone.`
+    )) return;
+
+    setDeletingMessages(true);
+    try {
+      const { error } = await supabase.rpc("delete_selected_board_messages", {
+        target_board_id: boardId,
+        target_message_ids: selectedMessageIds,
+      });
+      if (error) {
+        alert(`Error deleting messages for everyone: ${error.message}`);
+        return;
+      }
+      cancelMessageSelection();
+      await loadMessages();
+    } finally {
+      setDeletingMessages(false);
+    }
   }
 
   async function clearAllMessages() {
-    if (
-      board?.user_id !==
-      currentUserId
-    ) {
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        "Clear all messages from this board chat? This cannot be undone."
-      );
-
-    if (!confirmed) {
-      return;
-    }
+    if (messages.length === 0) return;
+    if (!window.confirm(
+      "Clear all messages for you only? Other board members will still see them."
+    )) return;
 
     setDeletingMessages(true);
-
-    const {
-      error,
-    } =
-      await supabase.rpc(
-        "clear_board_messages",
-        {
-          target_board_id:
-            boardId,
-        }
-      );
-
-    setDeletingMessages(false);
-
-    if (error) {
-      alert(
-        `Error clearing messages: ${error.message}`
-      );
-
-      return;
+    try {
+      await hideMessagesForMe(messages.map((message) => message.id));
+    } finally {
+      setDeletingMessages(false);
     }
-
-    cancelMessageSelection();
-
-    await loadMessages();
   }
 
   async function loadActiveCall() {
@@ -1640,12 +1651,23 @@ export default function MessengerClient({
                         }
                         className="rounded-full bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        Delete{" "}
+                        Delete for me{" "}
                         {selectedMessageIds.length >
                         0
                           ? `(${selectedMessageIds.length})`
                           : ""}
                       </button>
+
+                      {board?.user_id === currentUserId && (
+                        <button
+                          type="button"
+                          onClick={deleteSelectedMessagesForEveryone}
+                          disabled={deletingMessages || selectedMessageIds.length === 0}
+                          className="rounded-full bg-red-800 px-3 py-1 text-xs font-medium text-white hover:bg-red-900 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Delete for everyone
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -1677,10 +1699,7 @@ export default function MessengerClient({
                     </button>
                   ))}
 
-                {board?.user_id ===
-                  currentUserId &&
-                  messages.length >
-                    0 && (
+                {messages.length > 0 && (
                     <button
                       type="button"
                       onClick={
@@ -1691,7 +1710,7 @@ export default function MessengerClient({
                       }
                       className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700 ring-1 ring-red-200 hover:bg-red-100 disabled:opacity-50"
                     >
-                      Clear all
+                      Clear all (for me)
                     </button>
                   )}
 
@@ -1738,11 +1757,6 @@ export default function MessengerClient({
                       message.user_id ===
                       currentUserId;
 
-                    const canDelete =
-                      isMine ||
-                      board?.user_id ===
-                        currentUserId;
-
                     const isSelected =
                       selectedMessageIds.includes(
                         message.id
@@ -1759,8 +1773,7 @@ export default function MessengerClient({
                             : "justify-start"
                         }`}
                       >
-                        {selectionMode &&
-                          canDelete && (
+                        {selectionMode && (
                             <button
                               type="button"
                               onClick={() =>
@@ -1809,8 +1822,7 @@ export default function MessengerClient({
                           <div
                             onClick={() => {
                               if (
-                                selectionMode &&
-                                canDelete
+                                selectionMode
                               ) {
                                 toggleMessageSelection(
                                   message.id
@@ -1818,8 +1830,7 @@ export default function MessengerClient({
                               }
                             }}
                             className={`rounded-2xl px-4 py-3 text-sm leading-6 ${
-                              selectionMode &&
-                              canDelete
+                              selectionMode
                                 ? "cursor-pointer "
                                 : ""
                             }${
