@@ -138,6 +138,9 @@ export default function AccountSettingsPage() {
   const [passwordError, setPasswordError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [appearanceNotice, setAppearanceNotice] = useState("");
+  const [deletionBusy, setDeletionBusy] = useState(false);
+  const [deletionFeedback, setDeletionFeedback] = useState("");
+  const [deletionError, setDeletionError] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -152,6 +155,7 @@ export default function AccountSettingsPage() {
         activeUserIdRef.current = null;
         setPasswordFeedback("");
         setEmailFeedback("");
+        setDeletionFeedback("");
         setPassword("");
         setConfirmPassword("");
         setNewEmail("");
@@ -173,6 +177,9 @@ export default function AccountSettingsPage() {
         setEmailFeedback("");
         setPasswordError(false);
         setEmailError(false);
+        setDeletionFeedback("");
+        setDeletionError(false);
+        setDeletionBusy(false);
         setPasswordBusy(false);
         setEmailBusy(false);
         setLoading(true);
@@ -294,6 +301,41 @@ export default function AccountSettingsPage() {
     setEmailFeedback("Email change requested. Follow the verification instructions sent by Supabase. Your login email changes only after the required confirmations are complete.");
   }
 
+  async function requestAccountDeletion() {
+    if (deletionBusy) return;
+    const confirmed = window.confirm(
+      "Send a request to delete your TouchBase account? This will notify the administrator. Your account and boards will NOT be deleted now."
+    );
+    if (!confirmed) return;
+
+    setDeletionBusy(true);
+    setDeletionFeedback("");
+    setDeletionError(false);
+    const requestUserId = activeUserIdRef.current;
+    try {
+      const response = await fetch("/api/request-account-deletion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({}),
+      });
+      const result: { error?: string } = await response.json();
+      if (activeUserIdRef.current !== requestUserId) return;
+      if (!response.ok) {
+        setDeletionError(true);
+        setDeletionFeedback(result.error || "Could not send your request. Please try again later.");
+        return;
+      }
+      setDeletionFeedback("Your request has been sent to the administrator. Your account is still active until the request is reviewed.");
+    } catch {
+      if (activeUserIdRef.current !== requestUserId) return;
+      setDeletionError(true);
+      setDeletionFeedback("Could not send your request. Please check your connection and try again.");
+    } finally {
+      if (activeUserIdRef.current === requestUserId) setDeletionBusy(false);
+    }
+  }
+
   const accents: Record<string, string> = {
     blue: "#2563eb", purple: "#7c3aed", green: "#16a34a", orange: "#ea580c", pink: "#db2777",
     "blue-soft": "rgba(37, 99, 235, 0.72)", "purple-soft": "rgba(124, 58, 237, 0.72)",
@@ -366,7 +408,9 @@ export default function AccountSettingsPage() {
 
         <section className="rounded-2xl border border-white/50 p-5 shadow-xl backdrop-blur-md sm:p-6" style={panelStyle}>
           <h2 className="text-lg font-bold">Board ownership and account deletion</h2>
-          <p className="mt-2 text-sm text-slate-600">Ownership transfer and permanent account deletion are not available yet. Shared-board owners will be required to transfer ownership before deleting their account. This safeguard prevents accidental loss of other members' work.</p>
+          <p className="mt-2 text-sm text-slate-600">You can request account deletion for administrator review. Sending a request does not delete or disable your account. If you own shared boards, transfer ownership to another existing member first.</p>
+          {deletionFeedback && <p role="status" className={`mt-3 text-sm ${deletionError ? "text-red-700" : "text-green-700"}`}>{deletionFeedback}</p>}
+          <button type="button" onClick={requestAccountDeletion} disabled={deletionBusy} className="mt-4 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50">{deletionBusy ? "Sending request..." : "Request account deletion"}</button>
         </section>
       </div>
     </main>
