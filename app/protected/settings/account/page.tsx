@@ -137,6 +137,7 @@ export default function AccountSettingsPage() {
   const [emailFeedback, setEmailFeedback] = useState("");
   const [passwordError, setPasswordError] = useState(false);
   const [emailError, setEmailError] = useState(false);
+  const [appearanceNotice, setAppearanceNotice] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -158,32 +159,25 @@ export default function AccountSettingsPage() {
         return;
       }
 
-      // Token refreshes or profile updates for the same account must not
-      // erase feedback. Only a genuine account switch resets the forms.
-      if (activeUserIdRef.current === user.id) {
-        setCurrentEmail(user.email ?? "");
-        return;
-      }
-
+      // Refresh preferences for returning users too; don't clear form messages
+      // unless the actual authenticated user has changed.
+      const switchedAccount = activeUserIdRef.current !== user.id;
       const version = ++requestVersion;
       activeUserIdRef.current = user.id;
       setCurrentEmail(user.email ?? "");
-      setPassword("");
-      setConfirmPassword("");
-      setNewEmail("");
-      setPasswordFeedback("");
-      setEmailFeedback("");
-      setPasswordError(false);
-      setEmailError(false);
-      setPasswordBusy(false);
-      setEmailBusy(false);
-      setWallpaper("default");
-      setAccentColor("blue");
-      setTabColor("slate");
-      setPanelOpacity(50);
-      setFontColor("slate");
-      setFontSize(100);
-      setLoading(true);
+      if (switchedAccount) {
+        setPassword("");
+        setConfirmPassword("");
+        setNewEmail("");
+        setPasswordFeedback("");
+        setEmailFeedback("");
+        setPasswordError(false);
+        setEmailError(false);
+        setPasswordBusy(false);
+        setEmailBusy(false);
+        setLoading(true);
+      }
+      setAppearanceNotice("");
 
       const { data: preferences, error } = await supabase
         .from("user_preferences")
@@ -193,14 +187,20 @@ export default function AccountSettingsPage() {
 
       // An older account's preferences must never overwrite the new account.
       if (!active || version !== requestVersion || activeUserIdRef.current !== user.id) return;
-      if (error) console.error("Unable to load account appearance preferences", error);
-      if (preferences) {
-        setWallpaper(preferences.wallpaper || "default");
-        setAccentColor(preferences.accent_color || "blue");
-        setTabColor(preferences.tab_color || "slate");
-        setPanelOpacity(typeof preferences.panel_opacity === "number" ? preferences.panel_opacity : 50);
-        if (preferences.font_color && preferences.font_color in FONT_COLORS) setFontColor(preferences.font_color as FontColor);
-        setFontSize(typeof preferences.font_size === "number" ? preferences.font_size : 100);
+      if (error) {
+        console.error("Unable to load account appearance preferences", error);
+        setAppearanceNotice("Couldn't load this account's appearance preferences. Check your connection and reopen the page.");
+      } else {
+        // Defaults are for users with no saved row, not shared global settings.
+        setWallpaper(preferences?.wallpaper || "default");
+        setAccentColor(preferences?.accent_color || "blue");
+        setTabColor(preferences?.tab_color || "slate");
+        setPanelOpacity(typeof preferences?.panel_opacity === "number" ? preferences.panel_opacity : 50);
+        setFontColor(preferences?.font_color && preferences.font_color in FONT_COLORS ? preferences.font_color as FontColor : "slate");
+        setFontSize(typeof preferences?.font_size === "number" ? preferences.font_size : 100);
+        if (!preferences) {
+          setAppearanceNotice("This account has no saved appearance preferences yet. Choose and save them in Preferences.");
+        }
       }
       setLoading(false);
     }
@@ -221,7 +221,21 @@ export default function AccountSettingsPage() {
       }
     });
 
+    // Reflect changes saved in Preferences in another tab or when returning
+    // to this page. Refreshing never changes another user's saved settings.
+    function refreshOnReturn() {
+      if (document.visibilityState !== "visible") return;
+      void supabase.auth.getUser().then(({ data, error }) => {
+        if (!active) return;
+        void showAccount(error ? null : data.user);
+      });
+    }
+    window.addEventListener("focus", refreshOnReturn);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
     return () => {
+      window.removeEventListener("focus", refreshOnReturn);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
       active = false;
       requestVersion++;
       subscription.unsubscribe();
@@ -318,6 +332,13 @@ export default function AccountSettingsPage() {
           </div>
           <button type="button" onClick={() => router.push("/protected/boards")} className="rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm hover:brightness-110" style={{ backgroundColor: tab }}>Back to boards</button>
         </header>
+
+        {appearanceNotice && (
+          <div role="status" className="rounded-xl border border-white/50 p-4 text-sm shadow-sm backdrop-blur-md" style={panelStyle}>
+            <p>{appearanceNotice}</p>
+            <button type="button" onClick={() => router.push("/protected/settings/preferences")} className="mt-2 font-semibold underline">Open Preferences</button>
+          </div>
+        )}
 
         <section className="rounded-2xl border border-white/50 p-5 shadow-xl backdrop-blur-md sm:p-6" style={panelStyle}>
           <h2 className="text-lg font-bold">Change password</h2>
