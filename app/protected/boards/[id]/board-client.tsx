@@ -703,6 +703,11 @@ export default function BoardClient({
   ] = useState("");
 
   const [
+    transferringOwnerId,
+    setTransferringOwnerId,
+  ] = useState<string | null>(null);
+
+  const [
     preferences,
     setPreferences,
   ] = useState<UserPreferences>({
@@ -1086,10 +1091,55 @@ export default function BoardClient({
   }
 
   function closeMembersModal() {
-    if (removingMemberId) return;
+    if (removingMemberId || transferringOwnerId) return;
 
     setIsMembersModalOpen(false);
     setMembersError("");
+  }
+
+  async function transferBoardOwnership(member: BoardMember) {
+    if (!isOwner || transferringOwnerId || removingMemberId) return;
+    if (member.role !== "member" || member.user_id === currentUserId) {
+      setMembersError("Choose an existing board member to become the owner.");
+      return;
+    }
+
+    const recipient = member.email || "this board member";
+    const confirmed = window.confirm(
+      `Transfer ownership of ${board?.name || "this board"} to ${recipient}?\n\nThey will become the owner, and you will remain as a regular member. This cannot be undone unless the new owner transfers ownership back.`
+    );
+    if (!confirmed) return;
+
+    setMembersError("");
+    setTransferringOwnerId(member.user_id);
+    try {
+      const { error } = await supabase.rpc("transfer_board_ownership", {
+        target_board_id: boardId,
+        new_owner_id: member.user_id,
+      });
+      if (error) {
+        setMembersError(`Ownership transfer failed: ${error.message}`);
+        return;
+      }
+
+      // The previous owner stays a member; refresh the authoritative owner.
+      const { data: updatedBoard, error: boardError } = await supabase
+        .from("boards")
+        .select("id, name, user_id")
+        .eq("id", boardId)
+        .single();
+      if (boardError || !updatedBoard) {
+        setMembersError("Ownership was transferred, but the board could not be refreshed. Reload the page to see the new owner.");
+        return;
+      }
+      setBoard(updatedBoard);
+      setIsMembersModalOpen(false);
+      await loadBoardMembers();
+    } catch (error) {
+      setMembersError(error instanceof Error ? error.message : "An unexpected error occurred during ownership transfer.");
+    } finally {
+      setTransferringOwnerId(null);
+    }
   }
 
   async function removeMember(
@@ -4765,7 +4815,7 @@ export default function BoardClient({
                     closeMembersModal
                   }
                   disabled={Boolean(
-                    removingMemberId
+                    removingMemberId || transferringOwnerId
                   )}
                   className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
                 >
@@ -4819,26 +4869,28 @@ export default function BoardClient({
                             </div>
                           </div>
 
-                          {member.role !==
-                            "owner" && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeMember(
-                                  member
-                                )
-                              }
-                              disabled={
-                                removingMemberId ===
-                                member.user_id
-                              }
-                              className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {removingMemberId ===
-                              member.user_id
-                                ? "Removing..."
-                                : "Remove"}
-                            </button>
+                          {member.role === "member" && (
+                            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                              <button
+                                type="button"
+                                onClick={() => void transferBoardOwnership(member)}
+                                disabled={Boolean(transferringOwnerId || removingMemberId)}
+                                className="rounded-lg px-3 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                                style={{ backgroundColor: accentColor }}
+                              >
+                                {transferringOwnerId === member.user_id
+                                  ? "Transferring..."
+                                  : "Transfer ownership"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeMember(member)}
+                                disabled={Boolean(transferringOwnerId || removingMemberId)}
+                                className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {removingMemberId === member.user_id ? "Removing..." : "Remove"}
+                              </button>
+                            </div>
                           )}
                         </div>
                       )
@@ -4854,7 +4906,7 @@ export default function BoardClient({
                     closeMembersModal
                   }
                   disabled={Boolean(
-                    removingMemberId
+                    removingMemberId || transferringOwnerId
                   )}
                   className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
                 >
