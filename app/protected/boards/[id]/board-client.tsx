@@ -4602,7 +4602,7 @@ export default function BoardClient({
                             link
                           )
                         }
-                        className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/60 bg-white/78 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
+                        className="flex w-24 flex-col items-center gap-1 text-center transition hover:-translate-y-0.5"
                         title={
                           parseBoardAppUrl(
                             link.url
@@ -4621,13 +4621,18 @@ export default function BoardClient({
                           link.url
                         )}
                       >
-                        <img
-                          src={getLinkIconUrl(
-                            link.url
-                          )}
-                          alt=""
-                          className="h-6 w-6 rounded-sm object-contain"
-                        />
+                        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/60 bg-white/78 shadow-sm backdrop-blur transition hover:bg-white hover:shadow-md">
+                          <img
+                            src={getLinkIconUrl(
+                              link.url
+                            )}
+                            alt=""
+                            className="h-6 w-6 rounded-sm object-contain"
+                          />
+                        </span>
+                        <span className="w-full break-words text-xs font-semibold leading-snug text-slate-900">
+                          {getLinkLabel(link.label, link.url)}
+                        </span>
                       </button>
 
                       {link.user_id ===
