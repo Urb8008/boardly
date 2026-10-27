@@ -4,6 +4,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "TouchBase",
   description: "My Trello-style project management app",
+  icons: {
+    icon: [
+      { url: "/icon.png?v=2", type: "image/png" },
+    ],
+    shortcut: "/icon.png?v=2",
+    apple: "/icon.png?v=2",
+  },
 };
 
 export const viewport: Viewport = {
