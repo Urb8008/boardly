@@ -1547,44 +1547,52 @@ export default function BoardClient({
     }
   }
 
-  function getLinkLabel(
-    label: string | null,
-    url: string
-  ) {
-    const trimmed =
-      label?.trim();
-
-    if (trimmed) {
-      return trimmed;
-    }
-
-    const appTarget =
-      parseBoardAppUrl(url);
-
-    const displayUrl =
-      appTarget?.webUrl || url;
-
+  // Recognize UrbanEnglish shortcuts even when an older saved link has no
+  // protocol, a www prefix, or a custom desktop-app fallback URL.
+  function getBoardLinkHostname(url: string): string {
+    const appTarget = parseBoardAppUrl(url);
+    const raw = (appTarget?.webUrl || url).trim();
     try {
-      return new URL(
-        displayUrl
-      ).hostname;
+      const parsed = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+      return parsed.hostname.toLowerCase().replace(/^www\./, "");
     } catch {
-      return displayUrl;
+      return "";
     }
   }
 
-  function getLinkIconUrl(
-    url: string
-  ) {
-    const appTarget =
-      parseBoardAppUrl(url);
+  function getLinkLabel(label: string | null, url: string) {
+    const hostname = getBoardLinkHostname(url);
+    if (hostname === "classrooms.urbanenglish.es") return "Classrooms";
+    if (hostname === "progress.urbanenglish.es") return "UrbanProgress";
+    if (hostname === "touchbase.urbanenglish.es") return "TouchBase";
 
-    const iconUrl =
-      appTarget?.webUrl || url;
+    const trimmed = label?.trim();
+    if (trimmed) return trimmed;
+    if (hostname) {
+      const site = hostname.split(".")[0] || hostname;
+      return site.charAt(0).toUpperCase() + site.slice(1);
+    }
+    return parseBoardAppUrl(url)?.webUrl || url;
+  }
 
-    return `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(
-      iconUrl
-    )}&sz=64`;
+  function getLinkIconUrl(url: string) {
+    const hostname = getBoardLinkHostname(url);
+    if (hostname === "classrooms.urbanenglish.es") {
+      return "/board-link-icons/classrooms.png";
+    }
+    if (hostname === "progress.urbanenglish.es") {
+      return "/board-link-icons/progress.png";
+    }
+    const fallbackUrl = parseBoardAppUrl(url)?.webUrl || url;
+    return `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(fallbackUrl)}&sz=64`;
+  }
+
+  function handleBoardLinkIconError(event: React.SyntheticEvent<HTMLImageElement>, url: string) {
+    const image = event.currentTarget;
+    const hostname = getBoardLinkHostname(url);
+    const fallbackUrl = hostname ? `https://${hostname}` : (parseBoardAppUrl(url)?.webUrl || url);
+    const fallback = `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(fallbackUrl)}&sz=64`;
+    if (image.src !== fallback) image.src = fallback;
   }
 
   function openBoardShortcut(
@@ -4626,6 +4634,7 @@ export default function BoardClient({
                             src={getLinkIconUrl(
                               link.url
                             )}
+                            onError={(event) => handleBoardLinkIconError(event, link.url)}
                             alt=""
                             className="h-6 w-6 rounded-sm object-contain"
                           />
