@@ -3762,9 +3762,7 @@ export default function BoardClient({
     const cardElement = (
       <div
         key={card.id}
-        draggable={
-          !native
-        }
+        draggable={false}
         role="button"
         tabIndex={0}
         onClick={(event) => {
@@ -3854,6 +3852,14 @@ export default function BoardClient({
           <p className="font-medium leading-6 text-slate-800">
             {card.title}
           </p>
+
+          {card.status !== "todo" && (
+            <span className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+              {card.status === "done"
+                ? "Done"
+                : "In progress"}
+            </span>
+          )}
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -4000,16 +4006,24 @@ export default function BoardClient({
         "done"
     );
 
+  const allCards = [
+    ...todoCards,
+    ...progressCards,
+    ...doneCards,
+  ];
+
   function BoardColumn({
     title,
     status,
     cardsForColumn,
     native = false,
+    single = false,
   }: {
     title: string;
     status: CardStatus;
     cardsForColumn: Card[];
     native?: boolean;
+    single?: boolean;
   }) {
     const columnContents = (
       <>
@@ -4081,12 +4095,31 @@ export default function BoardClient({
     );
 
     const columnClassName =
-      "flex min-h-[420px] w-full flex-col rounded-2xl border border-white/50 p-4 shadow-lg backdrop-blur-md md:w-80 md:flex-none";
+      single
+        ? "flex min-h-[420px] w-full flex-col rounded-2xl border border-white/50 p-4 shadow-lg backdrop-blur-md"
+        : "flex min-h-[420px] w-full flex-col rounded-2xl border border-white/50 p-4 shadow-lg backdrop-blur-md md:w-80 md:flex-none";
 
     const columnStyle = {
       backgroundColor:
         panelBackgroundColor,
     };
+
+    if (single) {
+      return (
+        <div
+          className={
+            columnClassName
+          }
+          style={
+            columnStyle
+          }
+        >
+          {
+            columnContents
+          }
+        </div>
+      );
+    }
 
     if (native) {
       return (
@@ -4312,9 +4345,8 @@ export default function BoardClient({
                 </div>
 
                 <p className="mt-2 text-sm text-slate-500">
-                  Drag cards between
-                  columns to update their
-                  status.
+                  All cards for this
+                  board.
                 </p>
               </div>
 
@@ -4594,7 +4626,7 @@ export default function BoardClient({
                 </div>
               )}
 
-              <div className="mt-4 flex flex-wrap gap-3">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {boardLinks.map(
                   (link) => (
                     <div
@@ -4610,7 +4642,7 @@ export default function BoardClient({
                             link
                           )
                         }
-                        className="flex w-24 flex-col items-center gap-1 text-center transition hover:-translate-y-0.5"
+                        className="flex w-20 flex-col items-center gap-1 text-center transition hover:-translate-y-0.5"
                         title={
                           parseBoardAppUrl(
                             link.url
@@ -4653,14 +4685,14 @@ export default function BoardClient({
                               link
                             )
                           }
-                          className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold text-white shadow group-hover/link:flex"
+                          className="absolute -right-1 -top-5 hidden rounded bg-white/95 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 shadow-sm hover:text-red-600 group-hover/link:block"
                           title="Delete link"
                           aria-label={`Delete ${getLinkLabel(
                             link.label,
                             link.url
                           )}`}
                         >
-                          ×
+                          Remove
                         </button>
                       )}
                     </div>
@@ -4676,82 +4708,17 @@ export default function BoardClient({
               </div>
             </div>
 
-            {isNativeAndroid ? (
-              <DndContext
-                sensors={
-                  nativeDndSensors
+            {/* ONE LIST: all cards of this board (To Do / In Progress / Done columns removed) */}
+            <div className="mt-6 pb-4 md:mt-8 md:pb-8">
+              <BoardColumn
+                title="Cards"
+                status="todo"
+                cardsForColumn={
+                  allCards
                 }
-                collisionDetection={
-                  closestCenter
-                }
-                autoScroll
-                onDragStart={
-                  handleNativeDragStart
-                }
-                onDragEnd={
-                  handleNativeDragEnd
-                }
-                onDragCancel={
-                  handleNativeDragCancel
-                }
-              >
-                <div className="mt-6 grid gap-4 pb-4 md:mt-8 md:flex md:gap-6 md:overflow-x-auto md:pb-8">
-                  <BoardColumn
-                    title="To Do"
-                    status="todo"
-                    cardsForColumn={
-                      todoCards
-                    }
-                    native
-                  />
-
-                  <BoardColumn
-                    title="In Progress"
-                    status="in_progress"
-                    cardsForColumn={
-                      progressCards
-                    }
-                    native
-                  />
-
-                  <BoardColumn
-                    title="Done"
-                    status="done"
-                    cardsForColumn={
-                      doneCards
-                    }
-                    native
-                  />
-                </div>
-
-              </DndContext>
-            ) : (
-              <div className="mt-6 grid gap-4 pb-4 md:mt-8 md:flex md:gap-6 md:overflow-x-auto md:pb-8">
-                <BoardColumn
-                  title="To Do"
-                  status="todo"
-                  cardsForColumn={
-                    todoCards
-                  }
-                />
-
-                <BoardColumn
-                  title="In Progress"
-                  status="in_progress"
-                  cardsForColumn={
-                    progressCards
-                  }
-                />
-
-                <BoardColumn
-                  title="Done"
-                  status="done"
-                  cardsForColumn={
-                    doneCards
-                  }
-                />
-              </div>
-            )}
+                single
+              />
+            </div>
           </div>
         </div>
       </main>
@@ -4767,14 +4734,14 @@ export default function BoardClient({
       >
         <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
           <button type="button" onClick={() => setMobileMoreOpen(false)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-white" style={{ backgroundColor: accentColor }}>
-            <span className="text-lg">▦</span><span>Board</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Board</span>
           </button>
           <button type="button" onClick={() => router.push(`/protected/boards/${boardId}/calendar`)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
-            <span className="text-lg">▣</span><span>Calendar</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span>Calendar</span>
           </button>
           <button type="button" onClick={() => router.push(`/protected/boards/${boardId}/messenger`)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
             <span className="relative text-lg">
-              ✉
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.5a9 9 0 0 1-.9-4A8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5Z"/></svg>
               {unreadChatCount > 0 && (
                 <span className="absolute -right-3 -top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow">
                   {unreadChatCount > 99 ? "99+" : unreadChatCount}
@@ -4784,7 +4751,7 @@ export default function BoardClient({
             <span>Chat</span>
           </button>
           <button type="button" onClick={() => setMobileMoreOpen((current) => !current)} className="flex flex-col items-center rounded-xl px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
-            <span className="text-lg">•••</span><span>More</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>More</span>
           </button>
         </div>
       </div>
@@ -4833,7 +4800,7 @@ export default function BoardClient({
                   )}
                   className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
                 >
-                  ✕
+                  ×
                 </button>
               </div>
 
@@ -4960,7 +4927,7 @@ export default function BoardClient({
                   }
                   className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
                 >
-                  ✕
+                  ×
                 </button>
               </div>
 
@@ -5073,7 +5040,7 @@ export default function BoardClient({
                 }
                 className="rounded-lg bg-white/35 px-3 py-1 text-slate-700 backdrop-blur transition hover:bg-white/55"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -5177,7 +5144,7 @@ export default function BoardClient({
               </div>
             </div>
 
-            {!editingCard && (
+            {false && !editingCard && (
               <>
                 <label className="mt-5 block text-sm font-medium text-slate-700">
                   Column
@@ -5946,3 +5913,5 @@ export default function BoardClient({
     </>
   );
 }
+
+
